@@ -6,7 +6,18 @@ Un command `/ai-act` guidato dalla skill `ai-act-check` porta la valutazione di 
 
 > **Non è un parere legale.** Le decisioni di perimetro, la classificazione e le clausole contrattuali vanno validate da un legale. Ogni deliverable esterno chiude col blocco sign-off.
 
-## Installazione
+## Due modi d'uso
+
+Il repo serve due pubblici da un'unica sorgente (`skills/ai-act-check/`):
+
+| Modo | Per chi | Cosa ottieni |
+|------|---------|--------------|
+| **Plugin Claude Code** | Chi lavora in Claude Code (CLI / IDE / desktop) | Tutto: skill + command `/ai-act` (scan del codice e della documentazione, `file:line`, artifact persistiti, rules, gate, docs) |
+| **Skill autonoma** | Chi usa Claude (app claude.ai / desktop) o l'API / Agent SDK | La sola skill `ai-act-check`: triage legale conversazionale. Niente scan automatico del codice — non c'è filesystem |
+
+La differenza è strutturale: il **command** legge il codice, scrive file, gira su `git`/`bash` — capacità che esistono solo in Claude Code. La **skill** è il cervello legale ed è portabile ovunque le Agent Skill siano supportate.
+
+## Installazione — come plugin (Claude Code)
 
 Il repo è già un marketplace Claude Code (`.claude-plugin/marketplace.json`). Da Claude Code:
 
@@ -21,7 +32,31 @@ Requisiti opzionali:
 - MCP `clickup` — solo per `/ai-act docs --publish clickup`
 - tool `Artifact` — solo per `/ai-act docs --publish artifact`
 
-## Uso
+## Installazione — come skill autonoma (Claude, API, Agent SDK)
+
+La skill `ai-act-check` è un'**Agent Skill** conforme (`SKILL.md` + `references/`) e si usa anche fuori dal plugin. Genera il pacchetto:
+
+```bash
+./scripts/build-skill.sh      # produce dist/ai-act-check.zip
+```
+
+Poi, a seconda della superficie:
+
+- **App Claude (claude.ai / desktop)** — richiede un piano con code execution abilitato (Pro, Max, Team, Enterprise). *Impostazioni → Funzionalità → Skill → Carica una skill* e carica `dist/ai-act-check.zip`. Lo zip deve avere `SKILL.md` alla radice della cartella `ai-act-check/` (lo script lo garantisce). La skill resta **per singolo utente**: non c'è distribuzione a livello di team, ognuno la carica.
+- **API Claude (Skills API)** — crea la skill dalla cartella (nessuno zip):
+  ```python
+  from anthropic.lib import files_from_dir
+  skill = client.beta.skills.create(files=files_from_dir("skills/ai-act-check"))
+  # poi passala nel container: {"skills": [{"type": "custom", "skill_id": skill.id, "version": "latest"}]}
+  ```
+  Scope: **intero workspace**.
+- **Claude Code / Agent SDK (senza plugin)** — copia `skills/ai-act-check/` in `.claude/skills/` (di progetto) o `~/.claude/skills/` (personale): viene caricata dal filesystem, nessun upload.
+
+Vincoli Agent Skill: `SKILL.md` alla radice, nome cartella = campo `name` (`ai-act-check`), max 30 MB non compressi (qui ~100 KB). Le skill **non si sincronizzano** tra app, API e Claude Code: ogni superficie va aggiornata a mano.
+
+> La skill autonoma dà **solo** il triage legale conversazionale. Lo scan automatico del codice e della documentazione, gli artifact e il gate esistono solo nel plugin (serve un filesystem).
+
+## Uso (plugin)
 
 ```bash
 /ai-act scan                 # inventario dei componenti IA da codice + documentazione, classifica, elenca obblighi
@@ -86,11 +121,15 @@ I più importanti:
 
 ```
 ai-act-plugin/
-  .claude-plugin/plugin.json   # manifest
+  .claude-plugin/
+    plugin.json                # manifest del plugin
+    marketplace.json           # marketplace per /plugin marketplace add
   CLAUDE.md                    # guida per chi lavora sul plugin
   README.md                    # questo file
-  commands/ai-act.md           # /ai-act (5 modi)
-  skills/ai-act-check/
+  CHANGELOG.md                 # storico versioni + regole di versionamento
+  commands/ai-act.md           # /ai-act (5 modi) — solo plugin Claude Code
+  scripts/build-skill.sh       # impacchetta la skill autonoma → dist/ai-act-check.zip
+  skills/ai-act-check/         # ← sorgente unica, condivisa dai due modi d'uso
     SKILL.md                   # le 6 fasi
     references/                # corpo normativo (11 file), unica fonte legale
 ```

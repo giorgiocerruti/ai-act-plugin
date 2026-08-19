@@ -6,16 +6,22 @@ Plugin Claude Code per la conformità all'**AI Act** — Reg. (UE) 2024/1689 com
 
 Un command `/ai-act` guidato dalla skill `ai-act-check`. La skill è l'**autorità legale** (ogni affermazione normativa viene da lì e dalle sue `references/`, mai dalla memoria del modello né dal web). Il command aggiunge ciò che una skill non può fare: legge il codice con provenienza `file:line`, persiste i risultati, li rende per tre audience (agenti, cliente, end-user).
 
+**Due modi d'uso da una sorgente unica (`skills/ai-act-check/`):** come **plugin Claude Code** (skill + command completo) o come **skill autonoma** caricata su Claude (app/API/Agent SDK) — solo il triage legale, niente scan del codice perché fuori da Claude Code non c'è filesystem. Il pacchetto per l'app si genera con `scripts/build-skill.sh` (→ `dist/ai-act-check.zip`). Dettagli e passi di upload nel README.
+
 ## Struttura
 
 ```
 ai-act-plugin/
-  .claude-plugin/plugin.json     # manifest del plugin
+  .claude-plugin/
+    plugin.json                  # manifest del plugin
+    marketplace.json             # marketplace per /plugin marketplace add
   CLAUDE.md                      # questo file
+  scripts/
+    build-skill.sh               # impacchetta la skill autonoma → dist/ai-act-check.zip
   commands/
-    ai-act.md                    # /ai-act — 5 modi: scan | rules | docs | gate | status
+    ai-act.md                    # /ai-act — 5 modi: scan | rules | docs | gate | status (solo plugin)
   skills/
-    ai-act-check/
+    ai-act-check/                # sorgente unica: serve sia il plugin sia la skill autonoma
       SKILL.md                   # 6 fasi: fatti → divieti → ruolo → classe rischio → obblighi → output
       references/                # corpo normativo (11 file), unica fonte legale
         scadenzario.md           # calendario consolidato post-Digital-Omnibus (leggere SEMPRE, mai a memoria)

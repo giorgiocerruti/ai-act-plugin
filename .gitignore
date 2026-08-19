@@ -6,6 +6,9 @@ Thumbs.db
 .idea/
 .vscode/
 
+# Build output (Agent Skill package — rigenerato da scripts/build-skill.sh)
+dist/
+
 # Runtime artifacts (created in TARGET projects, never in the plugin repo)
 docs/compliance/ai-act/
 .claude/rules/ai-act.md
