@@ -1,91 +1,91 @@
 ---
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash(mkdir:*), Bash(test:*), Bash(ls:*), Bash(git:*), Bash(grep:*), Bash(rg:*), Bash(jq:*), Bash(date:*), Bash(shasum:*), Bash(wc:*), Bash(sed:*), Agent, AskUserQuestion, WebSearch, WebFetch, Artifact, TodoWrite
 argument-hint: <scan|rules|docs|gate|status> [--client | --end-users] [--publish clickup|artifact|both] [--force-context]
-description: AI Act compliance for this project (Reg. UE 2024/1689 as amended by Reg. UE 2026/1744). Scans the code for AI components, classifies risk and role, lists obligations with deadlines, generates rules the agents must follow, and produces client-facing documents. Always loads the ai-act-check skill.
+description: Conformità all'AI Act per questo progetto (Reg. UE 2024/1689 come modificato dal Reg. UE 2026/1744). Scansiona il codice per componenti di IA, classifica rischio e ruolo, elenca gli obblighi con le scadenze, genera le regole che gli agenti devono seguire e produce i documenti destinati al cliente. Carica sempre la skill ai-act-check.
 ---
 
-# /ai-act — AI Act triage, rules and deliverables
+# /ai-act — triage AI Act, regole e deliverable
 
 ## User Input
 $ARGUMENTS
 
 ---
 
-## CONFIGURATION
+## CONFIGURAZIONE
 
-| Placeholder | Meaning |
-|-------------|---------|
-| `{{AI_ACT_DIR}}` | Where the compliance artifacts live. Default `docs/compliance/ai-act` |
-| `{{AI_ACT_ORG_NAME}}` | Legal name of the entity that puts the system on the market **under its own name or trademark**. This — not who writes the code — decides the `provider` qualification (art. 3 n. 3) |
-| `{{AI_ACT_DEFAULT_ROLE}}` | Pre-selected role in the context questionnaire: `provider` \| `deployer` \| `component-supplier` \| `unknown`. Only a default — every run confirms it |
-| `{{AI_ACT_CLIENT_NAME}}` | Client / principal the deliverables are addressed to. Empty for internal products |
-| `{{AI_ACT_SCAN_PATHS}}` | Space-separated roots the inventory scans. Default: the repository root (`.`) |
-| `{{AI_ACT_EXTRA_SIGNATURES}}` | Extra `ERE` alternatives for stack-specific AI libraries, appended to the built-in signature set. Empty is fine |
-| `{{AI_ACT_OUTPUT_LANG}}` | Language of every generated document. Default `Italiano` |
-| `{{AI_ACT_LEGAL_REVIEWER}}` | Who signs off legally. Printed in the sign-off block of every external deliverable |
-| `{{CLICKUP_COMPLIANCE_DOC_ID}}` | ClickUp Doc that receives the published deliverables (`--publish clickup`) |
-| `{{INDUSTRY_SECTOR}}` | Sector of the project — feeds the Annex III cross-check |
+| Placeholder | Significato |
+|-------------|-------------|
+| `{{AI_ACT_DIR}}` | Dove vivono gli artifact di conformità. Default `docs/compliance/ai-act` |
+| `{{AI_ACT_ORG_NAME}}` | Denominazione legale del soggetto che immette il sistema sul mercato **con il proprio nome o marchio**. È questo — non chi scrive il codice — a determinare la qualifica di `provider` (art. 3 n. 3) |
+| `{{AI_ACT_DEFAULT_ROLE}}` | Ruolo preselezionato nel questionario di contesto: `provider` \| `deployer` \| `component-supplier` \| `unknown`. Solo un default — ogni esecuzione lo conferma |
+| `{{AI_ACT_CLIENT_NAME}}` | Cliente / committente a cui sono destinati i deliverable. Vuoto per i prodotti interni |
+| `{{AI_ACT_SCAN_PATHS}}` | Root scansionati dall'inventario, separati da spazio. Default: la root del repository (`.`) |
+| `{{AI_ACT_EXTRA_SIGNATURES}}` | Alternative `ERE` aggiuntive per librerie di IA specifiche dello stack, accodate al set di firme integrato. Vuoto va bene |
+| `{{AI_ACT_OUTPUT_LANG}}` | Lingua di ogni documento generato. Default `Italiano` |
+| `{{AI_ACT_LEGAL_REVIEWER}}` | Chi firma legalmente. Stampato nel blocco sign-off di ogni deliverable esterno |
+| `{{CLICKUP_COMPLIANCE_DOC_ID}}` | ClickUp Doc che riceve i deliverable pubblicati (`--publish clickup`) |
+| `{{INDUSTRY_SECTOR}}` | Settore del progetto — alimenta il cross-check con l'Allegato III |
 
-If a placeholder is still literal (`{{...}}`) at run time, treat it as **unset**: ask for the value with `AskUserQuestion` and write the answer into `00-context.md`. Never guess it, and never invent `{{AI_ACT_ORG_NAME}}` — it is the single fact that most changes the outcome.
-
----
-
-## MANDATORY RULES
-
-### 1. The skill is the authority
-Load the **`ai-act-check`** skill before any classification, and follow its phases in order (facts → prohibitions → role → risk class → obligations → output). This command adds only what a skill cannot do: it reads the code, persists the results, and renders them for three audiences. **Every legal statement comes from the skill and its `references/`** — never from your own memory of the regulation, and never from a web search unless the skill's `references/fonti-e-strumenti.md` names that source as official.
-
-### 2. No fact without provenance
-Two kinds of facts, never mixed:
-- **Facts from the code** — every entry in the inventory carries `file:line`. If you did not read it, it does not go in. Same rule as `docs-policy`: a plausible invention is worse than a gap because nobody re-checks it.
-- **Facts from the human** — role, trademark, who is exposed to the output, deployment status. These live in `00-context.md`, are **human-owned**, and are never overwritten or inferred from the repo name.
-
-Anything unknown is written as `⚠️ NON VERIFICATO — <what is missing>` plus **how the assessment would change in both scenarios** (skill, Fase 1).
-
-### 3. Obligatory vs prudent
-Every action is tagged `[OBBLIGO art. X]` or `[PRUDENZA]`. Confusing the two makes the client spend where nothing is required and costs credibility. Sanctions are cited only where pertinent, with the correct ceiling (skill, "Non allarmare").
-
-### 4. Not legal advice
-Every artifact and every external deliverable ends with the sign-off block (see *Sign-off block* below), naming `{{AI_ACT_LEGAL_REVIEWER}}`. Perimeter decisions and contract clauses are validated by a lawyer.
-
-### 5. Deliverables are not interchangeable
-The document for `{{AI_ACT_CLIENT_NAME}}` (obligations, instructions for use art. 13, contract addendum) and the notice for **their end users** (art. 50 disclosure, generated-content labelling) have different audiences, different content and different legal bases. Never merge them into one file.
-
-### 6. Rules generated for agents carry their validity
-`.claude/rules/ai-act.md` is read blindly by every agent. If the classification behind it is wrong, the error propagates to every feature. The generated file therefore carries `context_hash` + `generated_at`, and `/ai-act gate` marks it **STALE** as soon as the context or the inventory changes.
-
-### 7. Wiki ownership
-`docs/wiki/concepts/ai-act.md` follows `docs-policy`: `## Business (human-owned 🔒)` is **never** overwritten; only `## Implementazione (auto-derived 🔄)` is regenerated. Divergences go under `## Drift / Open questions`.
+Se un placeholder è ancora letterale (`{{...}}`) a run time, trattalo come **non impostato**: chiedi il valore con `AskUserQuestion` e scrivi la risposta in `00-context.md`. Non indovinarlo mai, e non inventare mai `{{AI_ACT_ORG_NAME}}` — è il singolo fatto che più cambia l'esito.
 
 ---
 
-## ARTIFACT LAYOUT
+## REGOLE OBBLIGATORIE
+
+### 1. La skill è l'autorità
+Carica la skill **`ai-act-check`** prima di ogni classificazione, e segui le sue fasi nell'ordine (fatti → divieti → ruolo → classe di rischio → obblighi → output). Questo command aggiunge solo ciò che una skill non può fare: legge il codice, persiste i risultati e li rende per tre audience. **Ogni affermazione legale viene dalla skill e dalle sue `references/`** — mai dalla tua memoria del regolamento, e mai da una ricerca web a meno che il file `references/fonti-e-strumenti.md` della skill nomini quella fonte come ufficiale.
+
+### 2. Nessun fatto senza provenienza
+Due tipi di fatti, mai mescolati:
+- **Fatti dal codice** — ogni voce dell'inventario porta `file:line`. Se non l'hai letto, non entra. Stessa regola di `docs-policy`: un'invenzione plausibile è peggio di una lacuna, perché nessuno la ri-controlla.
+- **Fatti dall'umano** — ruolo, marchio, chi è esposto agli output, stato di deployment. Vivono in `00-context.md`, sono **human-owned** e non vengono mai sovrascritti né dedotti dal nome del repo.
+
+Tutto ciò che è ignoto si scrive come `⚠️ NON VERIFICATO — <cosa manca>` più **come cambierebbe la valutazione nei due scenari** (skill, Fase 1).
+
+### 3. Obbligo vs prudenza
+Ogni azione è taggata `[OBBLIGO art. X]` o `[PRUDENZA]`. Confondere le due porta il cliente a spendere dove nulla è richiesto e costa credibilità. Le sanzioni si citano solo dove pertinenti, con il massimale corretto (skill, "Non allarmare").
+
+### 4. Non è un parere legale
+Ogni artifact e ogni deliverable esterno si chiude con il blocco sign-off (vedi *Blocco sign-off* più sotto), che nomina `{{AI_ACT_LEGAL_REVIEWER}}`. Le decisioni di perimetro e le clausole contrattuali sono validate da un legale.
+
+### 5. I deliverable non sono intercambiabili
+Il documento per `{{AI_ACT_CLIENT_NAME}}` (obblighi, istruzioni per l'uso art. 13, addendum contrattuale) e l'informativa per i **suoi end-user** (disclosure art. 50, marcatura dei contenuti generati) hanno audience diverse, contenuto diverso e basi giuridiche diverse. Non fonderli mai in un unico file.
+
+### 6. Le regole generate per gli agenti portano la loro validità
+`.claude/rules/ai-act.md` è letto alla cieca da ogni agente. Se la classificazione che c'è dietro è sbagliata, l'errore si propaga a ogni feature. Il file generato porta quindi `context_hash` + `generated_at`, e `/ai-act gate` lo marca **STALE** non appena il contesto o l'inventario cambiano.
+
+### 7. Ownership della wiki
+`docs/wiki/concepts/ai-act.md` segue `docs-policy`: `## Business (human-owned 🔒)` non viene **mai** sovrascritta; solo `## Implementazione (auto-derived 🔄)` viene rigenerata. Le divergenze vanno sotto `## Drift / Open questions`.
+
+---
+
+## LAYOUT DEGLI ARTIFACT
 
 ```
 {{AI_ACT_DIR}}/
-  00-context.md        human-owned facts (role, trademark, users, deployment) — asked once, reused
-  01-inventory.md      AI components found in the code, each with file:line — regenerated every scan
-  02-assessment.md     prohibitions → role → risk class → obligations with deadlines
-  03-actions.md        actions for the dev team · actions for the client · contract clauses
-  04-client-brief.md   deliverable for {{AI_ACT_CLIENT_NAME}}  (mode docs --client)
-  05-end-user-notice.md deliverable for the client's end users (mode docs --end-users)
-  99-state.json        hashes, run dates, staleness tracking
+  00-context.md        fatti human-owned (ruolo, marchio, utenti, deployment) — chiesti una volta, riusati
+  01-inventory.md      componenti IA trovati nel codice, ognuno con file:line — rigenerato a ogni scan
+  02-assessment.md     divieti → ruolo → classe di rischio → obblighi con scadenze
+  03-actions.md        azioni per il team dev · azioni per il cliente · clausole contrattuali
+  04-client-brief.md   deliverable per {{AI_ACT_CLIENT_NAME}}  (modo docs --client)
+  05-end-user-notice.md deliverable per gli end-user del cliente (modo docs --end-users)
+  99-state.json        hash, date di esecuzione, tracking della staleness
 ```
 
-Generated outside the directory:
-- `.claude/rules/ai-act.md` — constraints the agents read during `/create` (mode `rules`)
-- `docs/wiki/concepts/ai-act.md` — agent-readable wiki page (mode `rules`)
+Generati fuori dalla directory:
+- `.claude/rules/ai-act.md` — vincoli che gli agenti leggono durante `/create` (modo `rules`)
+- `docs/wiki/concepts/ai-act.md` — pagina wiki leggibile dagli agenti (modo `rules`)
 
-The directory is **committed**. That is the point: a second run diffs against the first, and the skill's "punti di attenzione futuri" (what would change the risk class) stops being a reminder and becomes a mechanical check.
+La directory è **committata**. È proprio il punto: una seconda esecuzione diffa contro la prima, e i "punti di attenzione futuri" della skill (ciò che farebbe cambiare classe di rischio) smettono di essere un promemoria e diventano un controllo meccanico.
 
-### `99-state.json` schema
+### Schema di `99-state.json`
 
 ```json
 {
   "schema": 1,
   "last_run": { "scan": "2026-08-04", "rules": null, "docs": null, "gate": null },
-  "context_hash": "<sha1 of 00-context.md>",
-  "inventory_hash": "<sha1 of 01-inventory.md>",
+  "context_hash": "<sha1 di 00-context.md>",
+  "inventory_hash": "<sha1 di 01-inventory.md>",
   "classification": { "risk_class": "alto-rischio|rischio-limitato|fuori-perimetro|vietato|indeterminato",
                       "role": "provider|deployer|component-supplier|unknown",
                       "annex_iii_item": null,
@@ -98,52 +98,52 @@ The directory is **committed**. That is the point: a second run diffs against th
 
 ---
 
-## MODE ROUTING
+## INSTRADAMENTO DEI MODI
 
-First token of `$ARGUMENTS`:
+Primo token di `$ARGUMENTS`:
 
-| Token | What it does | Requires |
-|-------|--------------|----------|
-| `scan` (or empty) | Inventory the code, classify, list obligations, write `01`–`03`, print the summary | — |
-| `rules` | Generate `.claude/rules/ai-act.md` + the wiki page from the assessment | `02-assessment.md` |
-| `docs --client` | Client-facing brief: obligations split by party, instructions for use (art. 13), contract addendum | `02-assessment.md`, `03-actions.md` |
-| `docs --end-users` | Transparency notice for the end users (art. 50): chatbot disclosure, generated-content labelling | `02-assessment.md` |
-| `gate [<ref>]` | Re-triage a diff: does this change add an AI component or alter the intended purpose? Exit non-zero on a class change | `99-state.json` |
-| `status` | Print classification, staleness, unknowns, deadlines within 180 days. Changes nothing | `99-state.json` |
+| Token | Cosa fa | Richiede |
+|-------|---------|----------|
+| `scan` (o vuoto) | Inventaria il codice, classifica, elenca gli obblighi, scrive `01`–`03`, stampa il riepilogo | — |
+| `rules` | Genera `.claude/rules/ai-act.md` + la pagina wiki dall'assessment | `02-assessment.md` |
+| `docs --client` | Brief per il cliente: obblighi ripartiti per parte, istruzioni per l'uso (art. 13), addendum contrattuale | `02-assessment.md`, `03-actions.md` |
+| `docs --end-users` | Informativa di trasparenza per gli end-user (art. 50): disclosure del chatbot, marcatura dei contenuti generati | `02-assessment.md` |
+| `gate [<ref>]` | Ri-triage di un diff: questa modifica aggiunge un componente IA o altera la finalità prevista? Exit non-zero su un cambio di classe | `99-state.json` |
+| `status` | Stampa classificazione, staleness, ignoti, scadenze entro 180 giorni. Non cambia nulla | `99-state.json` |
 
-`--publish clickup|artifact|both` applies to `docs` only. `--force-context` re-asks the context questionnaire even if `00-context.md` exists.
+`--publish clickup|artifact|both` si applica solo a `docs`. `--force-context` ri-chiede il questionario di contesto anche se `00-context.md` esiste.
 
-If the first token is none of the above, treat the whole `$ARGUMENTS` as a free-form question, load the skill and answer it — writing nothing.
+Se il primo token non è nessuno dei precedenti, tratta l'intero `$ARGUMENTS` come una domanda libera: carica la skill e rispondi — senza scrivere nulla.
 
 ---
 
-## PHASE 0 — Bootstrap (every mode)
+## PHASE 0 — Bootstrap (ogni modo)
 
 ```bash
 mkdir -p "{{AI_ACT_DIR}}"
 test -f "{{AI_ACT_DIR}}/99-state.json" || printf '{"schema":1,"last_run":{},"classification":{"risk_class":"indeterminato","role":"unknown"},"unknowns":[]}\n' > "{{AI_ACT_DIR}}/99-state.json"
 ```
 
-Read, in this order: `99-state.json`, `00-context.md` (if present), `docs/wiki/gotchas.md` (if present). Then load the `ai-act-check` skill.
+Leggi, in quest'ordine: `99-state.json`, `00-context.md` (se presente), `docs/wiki/gotchas.md` (se presente). Poi carica la skill `ai-act-check`.
 
 ---
 
-## MODE `scan`
+## MODO `scan`
 
-### SCAN-1 — Context (human-owned facts)
+### SCAN-1 — Contesto (fatti human-owned)
 
-If `00-context.md` exists and `--force-context` was not passed, **read it and skip to SCAN-2**. Print one line: `Contesto: riuso {{AI_ACT_DIR}}/00-context.md del <data>`.
+Se `00-context.md` esiste e `--force-context` non è stato passato, **leggilo e salta a SCAN-2**. Stampa una riga: `Contesto: riuso {{AI_ACT_DIR}}/00-context.md del <data>`.
 
-Otherwise collect the facts of the skill's Fase 1 with `AskUserQuestion` — grouped, never one question per fact:
+Altrimenti raccogli i fatti della Fase 1 della skill con `AskUserQuestion` — raggruppati, mai una domanda per fatto:
 
-1. **Ruolo e marchio** — with which name does the system reach the market, and who puts it into service? Options built from `{{AI_ACT_ORG_NAME}}` / `{{AI_ACT_CLIENT_NAME}}` / *terzo fornitore di componenti* / *non lo so ancora*.
-2. **Esposti agli output** — internal staff · the client's business customers · consumers · the general public · minors (multiSelect).
-3. **Decisioni su persone fisiche** — none · supports a human decision · decides autonomously; and in which area (lavoro/HR, credito, assicurazioni, istruzione, salute, servizi pubblici essenziali, giustizia, migrazione, biometria, nessuna).
+1. **Ruolo e marchio** — con quale nome il sistema arriva sul mercato, e chi lo mette in servizio? Opzioni costruite da `{{AI_ACT_ORG_NAME}}` / `{{AI_ACT_CLIENT_NAME}}` / *terzo fornitore di componenti* / *non lo so ancora*.
+2. **Esposti agli output** — personale interno · clienti business del cliente · consumatori · pubblico generale · minori (multiSelect).
+3. **Decisioni su persone fisiche** — nessuna · supporta una decisione umana · decide autonomamente; e in quale ambito (lavoro/HR, credito, assicurazioni, istruzione, salute, servizi pubblici essenziali, giustizia, migrazione, biometria, nessuna).
 4. **Stato** — idea · demo su dati fittizi · sviluppo · prova in condizioni reali · produzione.
 
-The distinction *demo su dati fittizi* vs *prova in condizioni reali* is not cosmetic: art. 2 §8 covers the first and **not** the second.
+La distinzione *demo su dati fittizi* vs *prova in condizioni reali* non è cosmetica: l'art. 2 §8 copre la prima e **non** la seconda.
 
-Write `00-context.md`:
+Scrivi `00-context.md`:
 
 ```markdown
 ---
@@ -153,7 +153,7 @@ updated: <YYYY-MM-DD>
 org_name: "<{{AI_ACT_ORG_NAME}}>"
 client_name: "<{{AI_ACT_CLIENT_NAME}}>"
 role_declared: provider|deployer|component-supplier|unknown
-market_name: "<trademark the system ships under>"
+market_name: "<marchio con cui il sistema arriva sul mercato>"
 lifecycle: idea|demo|sviluppo|prova-reale|produzione
 sector: "{{INDUSTRY_SECTOR}}"
 ---
@@ -182,14 +182,14 @@ sector: "{{INDUSTRY_SECTOR}}"
 - <fact> — impatto se A: … / se B: …
 ```
 
-### SCAN-2 — Inventory from the code
+### SCAN-2 — Inventario dal codice
 
-Scan `{{AI_ACT_SCAN_PATHS}}` (fall back to the repo root if unset). Use `Grep`/`rg`; for anything ambiguous, dispatch the `Explore` agent to trace how the component is actually used — a dependency in `package.json` that nothing imports is not an AI component of the system.
+Scansiona `{{AI_ACT_SCAN_PATHS}}` (ripiega sulla root del repo se non impostato). Usa `Grep`/`rg`; per qualsiasi cosa ambigua, dispaccia l'agente `Explore` per tracciare come il componente è effettivamente usato — una dipendenza in `package.json` che nessuno importa non è un componente IA del sistema.
 
-Signature set (extend with `{{AI_ACT_EXTRA_SIGNATURES}}`):
+Set di firme (estendi con `{{AI_ACT_EXTRA_SIGNATURES}}`):
 
-| Class | Signatures (case-insensitive) |
-|-------|-------------------------------|
+| Classe | Firme (case-insensitive) |
+|--------|--------------------------|
 | Modelli generativi / GPAI | `anthropic`, `@anthropic-ai`, `claude-`, `openai`, `gpt-4`, `gpt-5`, `mistral`, `cohere`, `gemini`, `genai`, `ollama`, `llama`, `bedrock`, `azure.*openai` |
 | Orchestrazione LLM | `langchain`, `llamaindex`, `semantic-kernel`, `haystack`, `crewai`, `autogen`, `mcp` |
 | Embedding / RAG | `embedding`, `pgvector`, `pinecone`, `qdrant`, `weaviate`, `chroma`, `faiss`, `vector_store` |
@@ -200,7 +200,7 @@ Signature set (extend with `{{AI_ACT_EXTRA_SIGNATURES}}`):
 | Domini ad alto rischio (Allegato III) | `candidat`, `cv_`, `resume`, `hiring`, `recruit`, `performance_review`, `credit`, `creditworthiness`, `insurance`, `premium`, `student`, `exam`, `grading`, `triage`, `diagnos`, `welfare`, `benefit` |
 | Dati art. 9 GDPR | `health`, `biometric`, `ethnic`, `religio`, `political`, `union_member`, `sexual`, `criminal` |
 
-For each hit that survives the *is it really used* check, produce one inventory row. Then write `01-inventory.md`:
+Per ogni hit che supera il controllo *è davvero usato*, produci una riga di inventario. Poi scrivi `01-inventory.md`:
 
 ```markdown
 ---
@@ -219,7 +219,7 @@ components_found: <N>
 - **Tassonomia**: <voce di references/tipologie-uso.md>
 - **Evidenza**: `path/to/file.ts:42`, `path/to/other.py:118`
 - **Modello / fornitore a monte**: <nome> — `path:line` · oppure ⚠️ NON VERIFICATO
-- **Finalità prevista**: <what it is for, in the product — not what the library can do>
+- **Finalità prevista**: <a cosa serve, nel prodotto — non cosa può fare la libreria>
 - **Output verso**: <chi legge l'output>
 - **Revisione umana**: presente `path:line` · assente · ⚠️ NON VERIFICATO
 - **Dati trattati**: <campi> — art. 9 GDPR: sì/no
@@ -232,18 +232,18 @@ components_found: <N>
 - ⚠️ …
 ```
 
-**The human-review field is the most valuable line in the file.** Per the skill, a mandatory hold point before the output drops obligations (art. 50 §4), attenuates classification (art. 6 §3 lett. c) and reduces contractual exposure. Look for it in the code — an approval flag, a `status: pending_review`, a manual publish step — and record where it is or that it is missing.
+**Il campo revisione umana è la riga più preziosa del file.** Secondo la skill, un punto di fermo obbligatorio prima dell'output fa cadere obblighi (art. 50 §4), attenua la classificazione (art. 6 §3 lett. c) e riduce l'esposizione contrattuale. Cercalo nel codice — un flag di approvazione, uno `status: pending_review`, un passo di pubblicazione manuale — e registra dov'è o che manca.
 
 ### SCAN-3 — Triage
 
-Run the skill's Fase 2 → Fase 5 on `00-context.md` + `01-inventory.md`. In order, no shortcuts:
+Esegui le Fasi 2 → 5 della skill su `00-context.md` + `01-inventory.md`. Nell'ordine, senza scorciatoie:
 
-1. **Prohibitions (art. 5)** — including the new art. 5 §1-bis mechanism: a generative component whose prohibited output is *reasonably foreseeable and reproducible without significant technical modification*, with no reasonable safeguards in place, is caught. An image generator on unfiltered prompts is exactly this case. If a prohibition applies, **stop**: write `02-assessment.md` with the prohibition, skip the obligation table, and say plainly that the system cannot be built in that form.
-2. **Role** — art. 3 n. 3 / n. 4, plus the three art. 25 §1 transfers. Check lett. c) explicitly (a change of intended purpose that turns a non-high-risk — even general-purpose — system into a high-risk one): it is the one that catches integrators.
-3. **Risk class** — art. 6 §1 (the two conditions are **cumulative**), art. 6 §2 + Annex III, art. 6 §3 derogations with the **profiling knock-out**, art. 50, out of scope + art. 2 exclusions.
-4. **Obligations + deadlines** — from `references/scadenzario.md`, **never from memory**: the Digital Omnibus moved the dates. Split provider obligations from deployer obligations. Remember art. 4 (AI literacy) applies regardless of risk class since 2 February 2025.
+1. **Divieti (art. 5)** — incluso il nuovo meccanismo dell'art. 5 §1-bis: un componente generativo il cui esito vietato è *ragionevolmente prevedibile e riproducibile senza modifiche tecniche significative*, in assenza di misure di sicurezza ragionevoli, è colpito. Un generatore di immagini su prompt non filtrati è esattamente questo caso. Se ricorre un divieto, **fermati**: scrivi `02-assessment.md` con il divieto, salta la tabella degli obblighi e dì chiaramente che il sistema non si può realizzare in quella forma.
+2. **Ruolo** — art. 3 n. 3 / n. 4, più i tre trasferimenti dell'art. 25 §1. Controlla esplicitamente la lett. c) (una modifica della finalità prevista che rende ad alto rischio un sistema che non lo era — anche per finalità generali): è quella che colpisce gli integratori.
+3. **Classe di rischio** — art. 6 §1 (le due condizioni sono **cumulative**), art. 6 §2 + Allegato III, deroghe dell'art. 6 §3 con il **knock-out sulla profilazione**, art. 50, fuori perimetro + esclusioni dell'art. 2.
+4. **Obblighi + scadenze** — da `references/scadenzario.md`, **mai a memoria**: il Digital Omnibus ha spostato le date. Distingui gli obblighi del fornitore da quelli del deployer. Ricorda che l'art. 4 (alfabetizzazione in materia di IA) si applica indipendentemente dalla classe di rischio dal 2 febbraio 2025.
 
-Write `02-assessment.md` (frontmatter + the skill's Fase 6 sections 1–5 and 9–10) and `03-actions.md` (sections 6–8):
+Scrivi `02-assessment.md` (frontmatter + le sezioni 1–5 e 9–10 della Fase 6 della skill) e `03-actions.md` (sezioni 6–8):
 
 ```markdown
 ---
@@ -260,11 +260,11 @@ unknowns: <N>
 ---
 ```
 
-The **Punti di attenzione futuri** section is mandatory and concrete: which change to which component would move the class. Write it as a list of conditions an agent can check, because `/ai-act gate` will check them.
+La sezione **Punti di attenzione futuri** è obbligatoria e concreta: quale modifica a quale componente sposterebbe la classe. Scrivila come un elenco di condizioni che un agente può verificare, perché `/ai-act gate` le verificherà.
 
-### SCAN-4 — State + summary
+### SCAN-4 — Stato + riepilogo
 
-Update `99-state.json` (hashes via `shasum`, classification, unknowns). Then print, in `{{AI_ACT_OUTPUT_LANG}}`:
+Aggiorna `99-state.json` (hash via `shasum`, classificazione, ignoti). Poi stampa, in `{{AI_ACT_OUTPUT_LANG}}`:
 
 ```
 ## Esito
@@ -279,21 +279,21 @@ Update `99-state.json` (hashes via `shasum`, classification, unknowns). Then pri
 /ai-act docs --client / --end-users
 ```
 
-Then append one line per recurring compliance mistake caught to `docs/wiki/gotchas-inbox.jsonl` (see the `gotchas` skill), if that file exists.
+Poi accoda una riga per ogni errore di conformità ricorrente rilevato a `docs/wiki/gotchas-inbox.jsonl` (vedi la skill `gotchas`), se quel file esiste.
 
 ---
 
-## MODE `rules`
+## MODO `rules`
 
-Requires `02-assessment.md`. If its `context_hash` no longer matches `00-context.md`, refuse and tell the user to re-run `scan` — generating rules from a stale assessment is the failure mode rule 6 exists to prevent.
+Richiede `02-assessment.md`. Se il suo `context_hash` non corrisponde più a `00-context.md`, rifiuta e di' all'utente di rilanciare `scan` — generare regole da un assessment stantìo è il failure mode che la regola 6 esiste per prevenire.
 
 ### RULES-1 — `.claude/rules/ai-act.md`
 
-`globs` are **derived from the inventory**, not blanket `**/*`: the union of the directories holding the components in `01-inventory.md`. Scoped rules get read where they matter and ignored where they do not.
+I `globs` sono **derivati dall'inventario**, non un `**/*` generico: l'unione delle directory che contengono i componenti in `01-inventory.md`. Le regole scoped vengono lette dove contano e ignorate dove no.
 
 ```markdown
 ---
-globs: "<derived from 01-inventory.md>"
+globs: "<derivati da 01-inventory.md>"
 ---
 
 # AI Act — vincoli operativi
@@ -304,69 +304,69 @@ globs: "<derived from 01-inventory.md>"
 > Classificazione corrente: <classe> · ruolo: <ruolo>.
 
 ## Vincoli non negoziabili [OBBLIGO]
-- <one line per obligation that constrains code, with the article>
+- <una riga per ogni obbligo che vincola il codice, con l'articolo>
 
 ## Cosa fa cambiare classe di rischio
-- <condition> → <new class> → **fermati e chiedi**, non implementare
+- <condizione> → <nuova classe> → **fermati e chiedi**, non implementare
 
 ## Da fare in ogni feature che tocca un componente IA
-- <e.g. logging art. 12, human review, art. 50 disclosure in the UI>
+- <es. logging art. 12, revisione umana, disclosure art. 50 nella UI>
 
 ## Buone prassi [PRUDENZA]
-- <not required, recommended>
+- <non richiesto, consigliato>
 ```
 
-The **"cosa fa cambiare classe"** section is the one that earns its keep: it turns the assessment's static photograph into a stop condition an agent hits *before* writing the code.
+La sezione **"cosa fa cambiare classe"** è quella che si ripaga: trasforma la fotografia statica dell'assessment in una condizione di stop che un agente incontra *prima* di scrivere il codice.
 
-### RULES-2 — `docs/wiki/concepts/ai-act.md` (only if a wiki already exists)
+### RULES-2 — `docs/wiki/concepts/ai-act.md` (solo se una wiki esiste già)
 
-**Skip this step entirely unless `docs/wiki/` already exists.** This plugin is standalone: a project that never adopted the template wiki must not have `docs/wiki/` conjured into it. If the directory is absent, note `wiki: assente — passo saltato` in the RULES-3 report and move on.
+**Salta interamente questo passo a meno che `docs/wiki/` esista già.** Questo plugin è standalone: un progetto che non ha mai adottato la wiki del template non deve vedersi materializzare `docs/wiki/`. Se la directory è assente, annota `wiki: assente — passo saltato` nel report RULES-3 e prosegui.
 
-If `docs/wiki/` exists, follow `docs-policy`. If the page exists, **preserve `## Business (human-owned 🔒)` verbatim** and regenerate only `## Implementazione (auto-derived 🔄)`. Cite `code:<path>#<symbol>` inside the sections, not only in the frontmatter, and mark anything unread as `⚠️ NON VERIFICATO`.
+Se `docs/wiki/` esiste, segui `docs-policy`. Se la pagina esiste, **preserva `## Business (human-owned 🔒)` alla lettera** e rigenera solo `## Implementazione (auto-derived 🔄)`. Cita `code:<path>#<symbol>` dentro le sezioni, non solo nel frontmatter, e marca come `⚠️ NON VERIFICATO` tutto ciò che non è stato letto.
 
-Then update `docs/wiki/index.md` and append to `docs/wiki/log.md` as `/wiki` does, and run `docs/wiki/lint-semantic.sh` if present.
+Poi aggiorna `docs/wiki/index.md` e accoda a `docs/wiki/log.md` come fa `/wiki`, ed esegui `docs/wiki/lint-semantic.sh` se presente.
 
 ### RULES-3 — Report
-List the generated files, the derived `globs`, and how many constraints were emitted per category.
+Elenca i file generati, i `globs` derivati e quanti vincoli sono stati emessi per categoria.
 
 ---
 
-## MODE `docs`
+## MODO `docs`
 
-Requires `02-assessment.md` + `03-actions.md`. Written in `{{AI_ACT_OUTPUT_LANG}}`. Two distinct deliverables (rule 5).
+Richiede `02-assessment.md` + `03-actions.md`. Scritto in `{{AI_ACT_OUTPUT_LANG}}`. Due deliverable distinti (regola 5).
 
 ### `--client` → `04-client-brief.md`
 
-For `{{AI_ACT_CLIENT_NAME}}`. Sections:
+Per `{{AI_ACT_CLIENT_NAME}}`. Sezioni:
 
-1. **In tre righe** — what they have, which class, whether something is urgent.
-2. **Perché li riguarda** — the role split: what falls on `{{AI_ACT_ORG_NAME}}` as provider/supplier and what falls on them as deployer. Say explicitly **what cannot be discharged on their behalf** (skill, Fase 6 §7) — e.g. the art. 26 §7 information to workers, the art. 4 literacy of their own staff.
-3. **Obblighi** — table: obbligo · articolo · chi · scadenza · cosa fare concretamente. Each tagged `[OBBLIGO]` / `[PRUDENZA]`.
-4. **Istruzioni per l'uso (art. 13)** — only for high-risk systems: intended purpose, known limits, human oversight required, expected accuracy, foreseeable misuse. This is a **provider obligation**: if the role is provider, this section is not optional.
-5. **Cosa fa cambiare le carte in tavola** — the changes that would reclassify the system.
-6. **Clausole contrattuali** — from `references/clausole-contrattuali.md`; if the role is *component supplier* into a high-risk host system, the art. 25 §4 written agreement is listed first.
-7. **Aree adiacenti** — GDPR, Statuto dei lavoratori, Codice del consumo, MDR where they intersect. Often the concrete risk lives here.
-8. **Sign-off block.**
+1. **In tre righe** — cosa hanno, quale classe, se qualcosa è urgente.
+2. **Perché li riguarda** — la ripartizione dei ruoli: cosa ricade su `{{AI_ACT_ORG_NAME}}` come fornitore/supplier e cosa ricade su di loro come deployer. Di' esplicitamente **cosa non può essere assolto al loro posto** (skill, Fase 6 §7) — es. l'informazione ai lavoratori dell'art. 26 §7, l'alfabetizzazione del proprio personale ex art. 4.
+3. **Obblighi** — tabella: obbligo · articolo · chi · scadenza · cosa fare concretamente. Ognuno taggato `[OBBLIGO]` / `[PRUDENZA]`.
+4. **Istruzioni per l'uso (art. 13)** — solo per i sistemi ad alto rischio: finalità prevista, limiti noti, sorveglianza umana richiesta, accuratezza attesa, uso improprio prevedibile. È un **obbligo del fornitore**: se il ruolo è provider, questa sezione non è opzionale.
+5. **Cosa fa cambiare le carte in tavola** — le modifiche che riclassificherebbero il sistema.
+6. **Clausole contrattuali** — da `references/clausole-contrattuali.md`; se il ruolo è *component supplier* verso un sistema ospite ad alto rischio, l'accordo scritto dell'art. 25 §4 è elencato per primo.
+7. **Aree adiacenti** — GDPR, Statuto dei lavoratori, Codice del consumo, MDR dove intersecano. Spesso il rischio concreto vive qui.
+8. **Blocco sign-off.**
 
 ### `--end-users` → `05-end-user-notice.md`
 
-For the people exposed to the outputs — plain language, no article numbers in the body (they go in a footnote), ready to be pasted into a site, an app or a T&C annex. Include **only what art. 50 actually requires** for the components in the inventory:
+Per le persone esposte agli output — linguaggio semplice, nessun numero d'articolo nel corpo (vanno in nota), pronto per essere incollato in un sito, un'app o un allegato ai T&C. Includi **solo ciò che l'art. 50 effettivamente richiede** per i componenti presenti nell'inventario:
 
-- direct interaction with an AI system → disclosure at first interaction, unless obvious to a reasonably informed person;
-- synthetic audio/image/video/text → machine-readable marking of generated content;
-- deepfake → declared as artificially generated, with the art. 50 §4 editorial exception where a human holds editorial responsibility;
-- emotion recognition / biometric categorisation → information to the exposed person.
+- interazione diretta con un sistema di IA → disclosure alla prima interazione, salvo che sia ovvia per una persona ragionevolmente informata;
+- audio/immagine/video/testo sintetici → marcatura leggibile dalla macchina del contenuto generato;
+- deepfake → dichiarato come generato artificialmente, con l'eccezione editoriale dell'art. 50 §4 dove un umano detiene la responsabilità editoriale;
+- riconoscimento delle emozioni / categorizzazione biometrica → informazione alla persona esposta.
 
-If none applies, say so in one line and do **not** manufacture a notice: an unnecessary disclosure trains users to ignore the necessary ones.
+Se nessuna si applica, dillo in una riga e **non** fabbricare un'informativa: una disclosure non necessaria abitua gli utenti a ignorare quelle necessarie.
 
-### Publishing
+### Pubblicazione
 
-- `--publish clickup` → `mcp__clickup__clickup_create_document` / `clickup_create_document_page` under `{{CLICKUP_COMPLIANCE_DOC_ID}}`, one page per deliverable. Record the Doc ID in `99-state.json`.
-- `--publish artifact` → an HTML page via the `Artifact` tool, for the deliverable the client actually reads. **Ask before publishing** (an artifact URL is shareable), never impersonate the client's branding, and keep the sign-off block visible on the page.
-- `--publish both` → both, with the same confirmation.
-- No flag → files only.
+- `--publish clickup` → `mcp__clickup__clickup_create_document` / `clickup_create_document_page` sotto `{{CLICKUP_COMPLIANCE_DOC_ID}}`, una pagina per deliverable. Registra il Doc ID in `99-state.json`.
+- `--publish artifact` → una pagina HTML tramite il tool `Artifact`, per il deliverable che il cliente legge davvero. **Chiedi prima di pubblicare** (una URL di artifact è condivisibile), non impersonare mai il branding del cliente, e mantieni il blocco sign-off visibile sulla pagina.
+- `--publish both` → entrambi, con la stessa conferma.
+- Nessun flag → solo file.
 
-### Sign-off block (mandatory, every external deliverable)
+### Blocco sign-off (obbligatorio, ogni deliverable esterno)
 
 ```markdown
 ---
@@ -378,32 +378,32 @@ Valutazione al <data>, su un sistema nello stato: <lifecycle>. Elementi non veri
 
 ---
 
-## MODE `gate`
+## MODO `gate`
 
-The bridge to the development pipeline. Runs on a diff — `git diff <ref>...HEAD --name-only` with `<ref>` defaulting to the merge base with the main branch.
+Il ponte verso la pipeline di sviluppo. Gira su un diff — `git diff <ref>...HEAD --name-only` con `<ref>` che defaulta al merge base con il branch main.
 
-1. Load `99-state.json`. No prior scan → print `AI-ACT: no baseline` and exit 0 (never block a project that never ran the triage).
-2. Re-run the SCAN-2 signature set **on the changed files only**.
-3. Verdicts:
+1. Carica `99-state.json`. Nessuno scan precedente → stampa `AI-ACT: no baseline` ed exit 0 (non bloccare mai un progetto che non ha mai eseguito il triage).
+2. Riesegui il set di firme di SCAN-2 **solo sui file modificati**.
+3. Verdetti:
 
-| Condition | Verdict |
-|-----------|---------|
-| No AI signature in the diff | `PASS` |
-| AI signature in files already in `01-inventory.md`, purpose unchanged | `PASS` (note it) |
-| New AI component not in the inventory | `STALE` — run `/ai-act scan` |
-| The diff matches a condition in *Punti di attenzione futuri* | `RECLASSIFY` — stop, human decision required |
-| A signature hits a prohibited practice (art. 5) | `BLOCK` — never automatic, escalate to the user |
-| `context_hash` ≠ hash of `00-context.md` | `STALE` |
+| Condizione | Verdetto |
+|------------|----------|
+| Nessuna firma IA nel diff | `PASS` |
+| Firma IA in file già in `01-inventory.md`, finalità invariata | `PASS` (annotalo) |
+| Nuovo componente IA non nell'inventario | `STALE` — esegui `/ai-act scan` |
+| Il diff corrisponde a una condizione dei *Punti di attenzione futuri* | `RECLASSIFY` — fermati, decisione umana richiesta |
+| Una firma colpisce una pratica vietata (art. 5) | `BLOCK` — mai automatico, escala all'utente |
+| `context_hash` ≠ hash di `00-context.md` | `STALE` |
 
-4. Print the verdict, the evidence `file:line` and the exact next command. `RECLASSIFY` and `BLOCK` exit non-zero.
+4. Stampa il verdetto, l'evidenza `file:line` e il comando successivo esatto. `RECLASSIFY` e `BLOCK` escono con exit non-zero.
 
-**This gate does not touch `hooks/pipeline-validate.sh`.** It is invoked explicitly — from `/create` when the task description mentions an AI component, or manually before a PR. Wiring it into the hook is a separate decision, taken once the classification is stable.
+**Questo gate non tocca `hooks/pipeline-validate.sh`.** È invocato esplicitamente — da `/create` quando la descrizione della task menziona un componente IA, o manualmente prima di una PR. Cablarlo nell'hook è una decisione separata, presa una volta che la classificazione è stabile.
 
 ---
 
-## MODE `status`
+## MODO `status`
 
-Reads `99-state.json` and the artifacts, writes nothing:
+Legge `99-state.json` e gli artifact, non scrive nulla:
 
 ```
 Classe: <…>   Ruolo: <…>   Ultimo scan: <data>
@@ -416,37 +416,37 @@ Deliverable: 04-client-brief.md <data> · 05-end-user-notice.md <mai>
 
 ---
 
-## FAILURE MODES TO AVOID
+## FAILURE MODE DA EVITARE
 
-- **Classifying a technology instead of a system.** "Usiamo un LLM" is not a classification. The same model is out of scope in a document assistant and high-risk in a CV screener. Always classify *a component with an intended purpose*, taken from `00-context.md`.
-- **Inferring the role from who writes the code.** It comes from whose name is on the market. If `00-context.md` says `unknown`, the assessment says `indeterminato` and shows both branches — it does not pick the comfortable one.
-- **Claiming an art. 6 §3 derogation for free.** It must be documented before placing on the market and still requires EU database registration (art. 6 §4, art. 49 §2), and it is unavailable outright if the system profiles natural persons.
-- **Quoting the 2024 calendar.** The Digital Omnibus moved the dates. Always read `references/scadenzario.md`.
-- **Producing a notice nobody needs.** See `docs --end-users`.
-- **Letting `rules` outlive its assessment.** That is what `context_hash` is for.
+- **Classificare una tecnologia invece di un sistema.** "Usiamo un LLM" non è una classificazione. Lo stesso modello è fuori perimetro in un assistente documentale e ad alto rischio in uno screening di CV. Classifica sempre *un componente con una finalità prevista*, presa da `00-context.md`.
+- **Dedurre il ruolo da chi scrive il codice.** Viene da chi ha il nome sul mercato. Se `00-context.md` dice `unknown`, l'assessment dice `indeterminato` e mostra entrambi i rami — non sceglie quello comodo.
+- **Rivendicare gratis una deroga dell'art. 6 §3.** Va documentata prima dell'immissione sul mercato e richiede comunque la registrazione nella banca dati UE (art. 6 §4, art. 49 §2), ed è del tutto indisponibile se il sistema profila persone fisiche.
+- **Citare il calendario del 2024.** Il Digital Omnibus ha spostato le date. Leggi sempre `references/scadenzario.md`.
+- **Produrre un'informativa che non serve a nessuno.** Vedi `docs --end-users`.
+- **Lasciare che `rules` sopravviva al suo assessment.** È a questo che serve `context_hash`.
 
 ---
 
 ## CHECKLIST
 
-- [ ] `ai-act-check` skill loaded before any classification
-- [ ] `00-context.md` present and human-confirmed (not inferred)
-- [ ] Inventory rows all carry `file:line`; unused dependencies excluded
-- [ ] Human-review presence recorded for every component
-- [ ] Prohibitions (art. 5) checked **first**, art. 5 §1-bis included
-- [ ] Role determined with the art. 25 transfers checked, lett. c) explicitly
-- [ ] Risk class derived in the skill's order; profiling knock-out applied
-- [ ] Deadlines taken from `references/scadenzario.md`, not from memory
-- [ ] Every action tagged `[OBBLIGO art. X]` or `[PRUDENZA]`
-- [ ] Unknowns listed with both-scenario impact
-- [ ] `99-state.json` updated with fresh hashes
-- [ ] Generated rules carry `context_hash` and the stale warning
-- [ ] Wiki `## Business (human-owned 🔒)` untouched
-- [ ] Sign-off block on every external deliverable
-- [ ] Publishing to ClickUp/Artifact confirmed by the user before it happens
+- [ ] skill `ai-act-check` caricata prima di ogni classificazione
+- [ ] `00-context.md` presente e confermato dall'umano (non dedotto)
+- [ ] Righe dell'inventario tutte con `file:line`; dipendenze inutilizzate escluse
+- [ ] Presenza della revisione umana registrata per ogni componente
+- [ ] Divieti (art. 5) controllati **per primi**, art. 5 §1-bis incluso
+- [ ] Ruolo determinato con i trasferimenti dell'art. 25 controllati, lett. c) esplicitamente
+- [ ] Classe di rischio derivata nell'ordine della skill; knock-out sulla profilazione applicato
+- [ ] Scadenze prese da `references/scadenzario.md`, non a memoria
+- [ ] Ogni azione taggata `[OBBLIGO art. X]` o `[PRUDENZA]`
+- [ ] Ignoti elencati con impatto nei due scenari
+- [ ] `99-state.json` aggiornato con hash freschi
+- [ ] Regole generate con `context_hash` e l'avviso di staleness
+- [ ] Wiki `## Business (human-owned 🔒)` intatta
+- [ ] Blocco sign-off su ogni deliverable esterno
+- [ ] Pubblicazione su ClickUp/Artifact confermata dall'utente prima che avvenga
 
 ---
 
-## START EXECUTION
+## AVVIO ESECUZIONE
 
-Parse the mode from `$ARGUMENTS`, run PHASE 0, load the `ai-act-check` skill, then execute the mode.
+Fai il parse del modo da `$ARGUMENTS`, esegui PHASE 0, carica la skill `ai-act-check`, poi esegui il modo.
