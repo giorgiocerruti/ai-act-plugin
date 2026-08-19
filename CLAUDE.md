@@ -35,7 +35,7 @@ ai-act-plugin/
 
 | Modo | Cosa fa |
 |------|---------|
-| `scan` (o vuoto) | Inventario dei componenti IA dal codice → divieti → ruolo → classe → obblighi. Scrive `01`–`03`, aggiorna `99-state.json` |
+| `scan` (o vuoto) | Inventario dei componenti IA dal codice **e dalla documentazione di progetto** (SCAN-2b, rilievi marcati `⚠️ NON VERIFICATO`) → divieti → ruolo → classe → obblighi. Scrive `01`–`03`, aggiorna `99-state.json` |
 | `rules` | Genera `.claude/rules/ai-act.md` (globs derivati dall'inventario) + `docs/wiki/concepts/ai-act.md` |
 | `docs --client` | Brief per il cliente: obblighi per parte, istruzioni per l'uso art. 13, addendum contrattuale |
 | `docs --end-users` | Informativa di trasparenza art. 50 per chi è esposto agli output |
@@ -56,7 +56,8 @@ Il command usa placeholder `{{...}}`. **Il plugin è autonomo: non ha un `/setup
 | `{{AI_ACT_ORG_NAME}}` | Chi immette il sistema sul mercato col proprio marchio — decide la qualifica `provider` (art. 3 n. 3). **Mai inventarlo** | — |
 | `{{AI_ACT_DEFAULT_ROLE}}` | Ruolo preselezionato: `provider` \| `deployer` \| `component-supplier` \| `unknown` | `unknown` |
 | `{{AI_ACT_CLIENT_NAME}}` | Destinatario dei deliverable | vuoto (prodotti interni) |
-| `{{AI_ACT_SCAN_PATHS}}` | Root scansionati dall'inventario | repo root |
+| `{{AI_ACT_SCAN_PATHS}}` | Root del codice scansionati dall'inventario | repo root |
+| `{{AI_ACT_DOC_PATHS}}` | Percorsi della documentazione scansionati da SCAN-2b | `README* docs/ doc/ specs/ *.md` |
 | `{{AI_ACT_EXTRA_SIGNATURES}}` | Firme ERE extra per librerie AI stack-specific | vuoto |
 | `{{AI_ACT_OUTPUT_LANG}}` | Lingua dei documenti generati | `Italiano` |
 | `{{AI_ACT_LEGAL_REVIEWER}}` | Chi firma legalmente (blocco sign-off) | — |

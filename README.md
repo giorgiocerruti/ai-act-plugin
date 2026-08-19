@@ -2,7 +2,7 @@
 
 Plugin Claude Code per la conformità all'**AI Act** — Reg. (UE) 2024/1689 come modificato dal Reg. (UE) 2026/1744 ("Digital Omnibus IA", in vigore dal 27 luglio 2026).
 
-Un command `/ai-act` guidato dalla skill `ai-act-check` porta la valutazione di conformità **dal codice**, non da un questionario: scansiona il repository per componenti di IA, classifica rischio e ruolo, elenca gli obblighi con le scadenze aggiornate, genera i vincoli che gli agenti seguono e produce i documenti per cliente ed end-user. Ogni affermazione legale viene dalla skill e dalle sue `references/` — mai dalla memoria del modello.
+Un command `/ai-act` guidato dalla skill `ai-act-check` porta la valutazione di conformità **dal codice**, non da un questionario: scansiona il repository per componenti di IA — sia il **codice sorgente** sia la **documentazione di progetto** (README, spec, `docs/`) — classifica rischio e ruolo, elenca gli obblighi con le scadenze aggiornate, genera i vincoli che gli agenti seguono e produce i documenti per cliente ed end-user. Ogni affermazione legale viene dalla skill e dalle sue `references/` — mai dalla memoria del modello. I rilievi tratti dalla documentazione sono sempre marcati `⚠️ NON VERIFICATO`: segnalano, non classificano.
 
 > **Non è un parere legale.** Le decisioni di perimetro, la classificazione e le clausole contrattuali vanno validate da un legale. Ogni deliverable esterno chiude col blocco sign-off.
 
@@ -24,7 +24,7 @@ Requisiti opzionali:
 ## Uso
 
 ```bash
-/ai-act scan                 # inventario dei componenti IA dal codice, classifica, elenca obblighi
+/ai-act scan                 # inventario dei componenti IA da codice + documentazione, classifica, elenca obblighi
 /ai-act rules                # emette .claude/rules/ai-act.md che gli agenti leggono durante lo sviluppo
 /ai-act docs --client        # brief per il cliente: obblighi per parte, istruzioni art. 13, clausole
 /ai-act docs --end-users     # informativa di trasparenza art. 50 per chi è esposto agli output
@@ -78,7 +78,8 @@ Il command usa placeholder `{{...}}`. **Il plugin è autonomo: non ha un `/setup
 
 I più importanti:
 - `{{AI_ACT_ORG_NAME}}` — chi immette il sistema sul mercato col proprio marchio. Decide la qualifica `provider` (art. 3 n. 3). **Mai inventarlo.**
-- `{{AI_ACT_SCAN_PATHS}}` — i root che l'inventario scansiona.
+- `{{AI_ACT_SCAN_PATHS}}` — i root del codice che l'inventario scansiona.
+- `{{AI_ACT_DOC_PATHS}}` — i percorsi della documentazione di progetto scansionati (SCAN-2b).
 - `{{AI_ACT_LEGAL_REVIEWER}}` — chi firma legalmente, stampato nel sign-off.
 
 ## Struttura

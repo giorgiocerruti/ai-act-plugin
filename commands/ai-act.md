@@ -1,7 +1,7 @@
 ---
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash(mkdir:*), Bash(test:*), Bash(ls:*), Bash(git:*), Bash(grep:*), Bash(rg:*), Bash(jq:*), Bash(date:*), Bash(shasum:*), Bash(wc:*), Bash(sed:*), Agent, AskUserQuestion, WebSearch, WebFetch, Artifact, TodoWrite
 argument-hint: <scan|rules|docs|gate|status> [--client | --end-users] [--publish clickup|artifact|both] [--force-context]
-description: Conformità all'AI Act per questo progetto (Reg. UE 2024/1689 come modificato dal Reg. UE 2026/1744). Scansiona il codice per componenti di IA, classifica rischio e ruolo, elenca gli obblighi con le scadenze, genera le regole che gli agenti devono seguire e produce i documenti destinati al cliente. Carica sempre la skill ai-act-check.
+description: Conformità all'AI Act per questo progetto (Reg. UE 2024/1689 come modificato dal Reg. UE 2026/1744). Scansiona il codice e la documentazione di progetto per componenti di IA, classifica rischio e ruolo, elenca gli obblighi con le scadenze, genera le regole che gli agenti devono seguire e produce i documenti destinati al cliente. Carica sempre la skill ai-act-check.
 ---
 
 # /ai-act — triage AI Act, regole e deliverable
@@ -19,7 +19,8 @@ $ARGUMENTS
 | `{{AI_ACT_ORG_NAME}}` | Denominazione legale del soggetto che immette il sistema sul mercato **con il proprio nome o marchio**. È questo — non chi scrive il codice — a determinare la qualifica di `provider` (art. 3 n. 3) |
 | `{{AI_ACT_DEFAULT_ROLE}}` | Ruolo preselezionato nel questionario di contesto: `provider` \| `deployer` \| `component-supplier` \| `unknown`. Solo un default — ogni esecuzione lo conferma |
 | `{{AI_ACT_CLIENT_NAME}}` | Cliente / committente a cui sono destinati i deliverable. Vuoto per i prodotti interni |
-| `{{AI_ACT_SCAN_PATHS}}` | Root scansionati dall'inventario, separati da spazio. Default: la root del repository (`.`) |
+| `{{AI_ACT_SCAN_PATHS}}` | Root del **codice** scansionati dall'inventario, separati da spazio. Default: la root del repository (`.`) |
+| `{{AI_ACT_DOC_PATHS}}` | Percorsi della **documentazione di progetto** scansionati da SCAN-2b, separati da spazio. Default: `README* docs/ doc/ specs/ *.md` |
 | `{{AI_ACT_EXTRA_SIGNATURES}}` | Alternative `ERE` aggiuntive per librerie di IA specifiche dello stack, accodate al set di firme integrato. Vuoto va bene |
 | `{{AI_ACT_OUTPUT_LANG}}` | Lingua di ogni documento generato. Default `Italiano` |
 | `{{AI_ACT_LEGAL_REVIEWER}}` | Chi firma legalmente. Stampato nel blocco sign-off di ogni deliverable esterno |
@@ -104,7 +105,7 @@ Primo token di `$ARGUMENTS`:
 
 | Token | Cosa fa | Richiede |
 |-------|---------|----------|
-| `scan` (o vuoto) | Inventaria il codice, classifica, elenca gli obblighi, scrive `01`–`03`, stampa il riepilogo | — |
+| `scan` (o vuoto) | Inventaria il codice **e la documentazione di progetto**, classifica, elenca gli obblighi, scrive `01`–`03`, stampa il riepilogo | — |
 | `rules` | Genera `.claude/rules/ai-act.md` + la pagina wiki dall'assessment | `02-assessment.md` |
 | `docs --client` | Brief per il cliente: obblighi ripartiti per parte, istruzioni per l'uso (art. 13), addendum contrattuale | `02-assessment.md`, `03-actions.md` |
 | `docs --end-users` | Informativa di trasparenza per gli end-user (art. 50): disclosure del chatbot, marcatura dei contenuti generati | `02-assessment.md` |
@@ -234,9 +235,37 @@ components_found: <N>
 
 **Il campo revisione umana è la riga più preziosa del file.** Secondo la skill, un punto di fermo obbligatorio prima dell'output fa cadere obblighi (art. 50 §4), attenua la classificazione (art. 6 §3 lett. c) e riduce l'esposizione contrattuale. Cercalo nel codice — un flag di approvazione, uno `status: pending_review`, un passo di pubblicazione manuale — e registra dov'è o che manca.
 
+### SCAN-2b — Rilievo dalla documentazione di progetto
+
+Il codice dice cosa il sistema **fa oggi**; la documentazione dice cosa il sistema **dichiara di fare** — e le due cose divergono. Un componente IA descritto in una spec ma non ancora scritto, una finalità d'uso che il codice non tradisce, una promessa commerciale ("scoring dei candidati", "diagnosi assistita") che cambierebbe la classe: sono segnali che lo scan del solo codice perde. Questo passo li recupera, **senza mai promuoverli a fatti**.
+
+Scansiona i documenti di progetto in `{{AI_ACT_DOC_PATHS}}` (default: `README*`, `docs/`, `doc/`, `specs/`, `*.md` nella root — ripiega su `README*` + `*.md` root se non impostato). **Escludi** gli artifact prodotti da questo command (`{{AI_ACT_DIR}}/`, `.claude/rules/ai-act.md`, `docs/wiki/concepts/ai-act.md`): non rileggere ciò che hai scritto tu.
+
+Cerca in linguaggio naturale — non firme di codice: menzioni di IA/ML, finalità dichiarate ("il sistema serve a…", "usato per…"), i termini di dominio ad alto rischio dell'Allegato III (assunzioni, credito, assicurazioni, istruzione, salute, biometria, giustizia, migrazione), e le funzionalità **pianificate ma non ancora implementate** ("in roadmap", "TODO", "fase 2", "prossima release").
+
+**Regole ferree per questo passo — la documentazione è prosa, non prova:**
+- Ogni rilievo da documentazione è marcato `⚠️ NON VERIFICATO — da documentazione: <path:line>`. Non ottiene mai un'evidenza `file:line` di codice, perché non ne ha una.
+- Un rilievo da documentazione **non diventa mai** un componente classificato con obblighi propri. Alimenta i *punti di attenzione* e gli *ignoti*, non la tabella degli obblighi.
+- La documentazione **non sovrascrive** `00-context.md` (human-owned) né lo deduce. Se un documento afferma una finalità o un ruolo che il questionario non conferma, è una **divergenza da segnalare**, non una correzione da applicare.
+- Se un documento descrive una pratica potenzialmente **vietata** (art. 5) o un uso **ad alto rischio** che il codice non mostra, è il segnale più prezioso del passo: portalo in cima ai *Punti di attenzione futuri* e proponi all'umano di confermarlo o smentirlo.
+
+Aggiungi a `01-inventory.md` due sezioni (vuote se non emerge nulla — non fabbricare rilievi):
+
+```markdown
+## Dichiarato nella documentazione (⚠️ non riscontrato nel codice)
+| Cosa | Dove (doc) | Riscontro nel codice | Impatto potenziale sulla classe |
+|------|-----------|----------------------|---------------------------------|
+| <componente/finalità descritta> | `README.md:12` | assente · parziale `path:line` | <es. alto rischio se implementato: Allegato III §4 lavoro> |
+
+## Divergenze codice ↔ documentazione ↔ contesto
+| Affermazione | Fonte | In conflitto con | Da chiarire con l'umano |
+|--------------|-------|------------------|--------------------------|
+| <es. "decide l'assunzione"> | `spec.md:8` | `00-context.md` (dice: supporta) · codice (nessuna decisione autonoma) | sì |
+```
+
 ### SCAN-3 — Triage
 
-Esegui le Fasi 2 → 5 della skill su `00-context.md` + `01-inventory.md`. Nell'ordine, senza scorciatoie:
+Esegui le Fasi 2 → 5 della skill su `00-context.md` + `01-inventory.md`. **La classificazione e gli obblighi si fondano solo sul codice (`## Componenti`) e sul contesto umano** — mai su un rilievo da documentazione. I rilievi delle sezioni SCAN-2b confluiscono invece negli *ignoti* del frontmatter e, se toccano un divieto o un uso ad alto rischio, in cima ai *Punti di attenzione futuri*: sono ipotesi da confermare con l'umano, non fatti su cui classificare. Nell'ordine, senza scorciatoie:
 
 1. **Divieti (art. 5)** — incluso il nuovo meccanismo dell'art. 5 §1-bis: un componente generativo il cui esito vietato è *ragionevolmente prevedibile e riproducibile senza modifiche tecniche significative*, in assenza di misure di sicurezza ragionevoli, è colpito. Un generatore di immagini su prompt non filtrati è esattamente questo caso. Se ricorre un divieto, **fermati**: scrivi `02-assessment.md` con il divieto, salta la tabella degli obblighi e dì chiaramente che il sistema non si può realizzare in quella forma.
 2. **Ruolo** — art. 3 n. 3 / n. 4, più i tre trasferimenti dell'art. 25 §1. Controlla esplicitamente la lett. c) (una modifica della finalità prevista che rende ad alto rischio un sistema che non lo era — anche per finalità generali): è quella che colpisce gli integratori.
@@ -423,6 +452,7 @@ Deliverable: 04-client-brief.md <data> · 05-end-user-notice.md <mai>
 - **Rivendicare gratis una deroga dell'art. 6 §3.** Va documentata prima dell'immissione sul mercato e richiede comunque la registrazione nella banca dati UE (art. 6 §4, art. 49 §2), ed è del tutto indisponibile se il sistema profila persone fisiche.
 - **Citare il calendario del 2024.** Il Digital Omnibus ha spostato le date. Leggi sempre `references/scadenzario.md`.
 - **Produrre un'informativa che non serve a nessuno.** Vedi `docs --end-users`.
+- **Classificare su un'affermazione della documentazione.** Un README che promette "scoring dei candidati" non è un componente ad alto rischio finché il codice non lo realizza. Il rilievo da doc è un *punto di attenzione* da confermare con l'umano, mai la base di un obbligo. Vedi SCAN-2b.
 - **Lasciare che `rules` sopravviva al suo assessment.** È a questo che serve `context_hash`.
 
 ---
@@ -432,6 +462,8 @@ Deliverable: 04-client-brief.md <data> · 05-end-user-notice.md <mai>
 - [ ] skill `ai-act-check` caricata prima di ogni classificazione
 - [ ] `00-context.md` presente e confermato dall'umano (non dedotto)
 - [ ] Righe dell'inventario tutte con `file:line`; dipendenze inutilizzate escluse
+- [ ] Documentazione di progetto scansionata (SCAN-2b); rilievi da doc marcati `⚠️ NON VERIFICATO — da documentazione` e mai promossi a componenti classificati
+- [ ] Divergenze codice ↔ documentazione ↔ contesto segnalate, non risolte in silenzio
 - [ ] Presenza della revisione umana registrata per ogni componente
 - [ ] Divieti (art. 5) controllati **per primi**, art. 5 §1-bis incluso
 - [ ] Ruolo determinato con i trasferimenti dell'art. 25 controllati, lett. c) esplicitamente
