@@ -1,0 +1,26 @@
+{
+  "name": "ai-act-plugin",
+  "description": "AI Act compliance for a codebase (Reg. UE 2024/1689 as amended by Reg. UE 2026/1744 — 'Digital Omnibus IA'). The /ai-act command scans the code for AI components, classifies risk and provider/deployer role, lists obligations with post-Digital-Omnibus deadlines, generates the constraint rules the agents follow, and produces client- and end-user-facing deliverables — every legal statement grounded in the ai-act-check skill and its references/, never from memory. Five modes: scan, rules, docs, gate, status.",
+  "version": "1.0.0",
+  "author": {
+    "name": "Giorgio Cerruti",
+    "url": "https://github.com/giorgiocerruti"
+  },
+  "repository": "https://github.com/giorgiocerruti/ai-act-plugin",
+  "keywords": [
+    "ai-act",
+    "eu-ai-act",
+    "regulatory-compliance",
+    "risk-classification",
+    "ai-governance",
+    "transparency-obligations",
+    "reg-ue-2024-1689",
+    "digital-omnibus",
+    "annex-iii",
+    "high-risk-ai",
+    "art-50-transparency",
+    "provider-deployer",
+    "compliance-as-code"
+  ],
+  "license": "MIT"
+}

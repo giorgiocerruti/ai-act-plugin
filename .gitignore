@@ -1,0 +1,11 @@
+# OS / editor
+.DS_Store
+Thumbs.db
+*.swp
+*~
+.idea/
+.vscode/
+
+# Runtime artifacts (created in TARGET projects, never in the plugin repo)
+docs/compliance/ai-act/
+.claude/rules/ai-act.md

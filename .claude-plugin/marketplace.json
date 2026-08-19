@@ -1,0 +1,13 @@
+{
+  "name": "ai-act",
+  "owner": {
+    "name": "Giorgio Cerruti",
+    "url": "https://github.com/giorgiocerruti"
+  },
+  "plugins": [
+    {
+      "name": "ai-act-plugin",
+      "source": "."
+    }
+  ]
+}
