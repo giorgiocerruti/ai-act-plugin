@@ -1,5 +1,17 @@
 # Fonti, strumenti e loro affidabilità
 
+> **Ultima revisione normativa di questo corpus:** 2026-08-19 · **corpus_version:** 1.0.0
+> **Cadenza di controllo consigliata:** ogni 3 mesi, e sempre dopo un atto UE/nazionale rilevante.
+> **Come si aggiorna:** ricontrolla le *Fonti primarie* e la *Soft law* qui sotto; se una data,
+> una soglia o un obbligo è cambiato, correggi il file `references/` interessato, aggiorna questa
+> data, fai il bump di `version` in `.claude-plugin/plugin.json` e annota la modifica in `CHANGELOG.md`.
+> I clienti ricevono l'aggiornamento con `/plugin marketplace update ai-act`.
+>
+> **Cosa ricontrollare per primo** (le voci più volatili): decreti attuativi italiani (AG 421 e schema
+> penale, delega in scadenza 10 ottobre 2026 — vedi *Italia*); sandbox nazionale (termine 2 agosto 2027);
+> orientamenti Commissione su art. 6 §5 (alto rischio) *attesi*; norme armonizzate CEN/CENELEC JTC 21
+> (nessuna ancora in GUUE); ogni ulteriore rettifica del calendario post-Digital-Omnibus in EUR-Lex.
+
 Regola generale: **per il contenuto degli obblighi vanno bene più fonti; per le date vale solo EUR-Lex.** Il Digital Omnibus ha spostato quasi tutte le scadenze e la maggior parte delle fonti in circolazione riporta ancora il calendario del 2024.
 
 ## Fonti primarie

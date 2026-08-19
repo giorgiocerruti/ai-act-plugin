@@ -94,6 +94,19 @@ ai-act-plugin/
     references/                # corpo normativo (11 file), unica fonte legale
 ```
 
+## Manutenzione e aggiornamenti
+
+Il valore legale del plugin sta nelle `references/`, che sono l'**unica fonte normativa** che il command usa. La legge cambia (il Digital Omnibus ha già spostato le date una volta): quando succede, quei file vanno aggiornati, altrimenti ogni copia scaricata continua a citare norme superate.
+
+- **Validità:** ogni file di `references/` porta la data dell'ultima revisione normativa in [`fonti-e-strumenti.md`](./skills/ai-act-check/references/fonti-e-strumenti.md). Ultima revisione: **19 agosto 2026**.
+- **Ricevere gli aggiornamenti:** i clienti che hanno installato il plugin lo aggiornano con
+  ```
+  /plugin marketplace update ai-act
+  ```
+- **Contribuire un aggiornamento normativo:** correggi il file `references/` interessato, aggiorna la data di revisione, fai il bump di `version` in `plugin.json`, annota la modifica in [`CHANGELOG.md`](./CHANGELOG.md) citando l'atto UE/nazionale. Le regole di versionamento sono nel CHANGELOG.
+
+Ogni deliverable esterno riporta comunque, nel blocco sign-off, la data di valutazione e il rimando al legale: la classificazione è una fotografia a una data, non una garanzia perpetua.
+
 ## Provenienza
 
 Estratto da [`claude-infrastructure-template`](https://github.com/giorgiocerruti/claude-infrastructure-template) v2.26.0 (command `/ai-act` + skill `ai-act-check`) come plugin standalone.
