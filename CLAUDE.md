@@ -18,11 +18,16 @@ ai-act-plugin/
   CLAUDE.md                      # questo file
   scripts/
     build-skill.sh               # impacchetta la skill autonoma → dist/ai-act-check.zip
+  assets/
+    report-template.html         # template del report HTML di conformità (modo report)
+  tests/
+    run-signatures.sh            # test di regressione sul rilevamento firme
+    fixtures/                    # mini-repo campione + expected.json (oracolo)
   commands/
-    ai-act.md                    # /ai-act — 5 modi: scan | rules | docs | gate | status (solo plugin)
+    ai-act.md                    # /ai-act — 7 modi: scan | check | rules | docs | report | gate | status (solo plugin)
   skills/
     ai-act-check/                # sorgente unica: serve sia il plugin sia la skill autonoma
-      SKILL.md                   # 6 fasi: fatti → divieti → ruolo → classe rischio → obblighi → output
+      SKILL.md                   # fasi: interrogazione → divieti → ruolo → classe → obblighi → conformità → output
       references/                # corpo normativo (11 file), unica fonte legale
         scadenzario.md           # calendario consolidato post-Digital-Omnibus (leggere SEMPRE, mai a memoria)
         allegato-iii.md          # le 8 voci ad alto rischio
@@ -41,12 +46,14 @@ ai-act-plugin/
 
 | Modo | Cosa fa |
 |------|---------|
-| `scan` (o vuoto) | Inventario dei componenti IA dal codice **e dalla documentazione di progetto** (SCAN-2b, rilievi marcati `⚠️ NON VERIFICATO`) → divieti → ruolo → classe → obblighi. Scrive `01`–`03`, aggiorna `99-state.json` |
-| `rules` | Genera `.claude/rules/ai-act.md` (globs derivati dall'inventario) + `docs/wiki/concepts/ai-act.md` |
+| `scan` (o vuoto) | Interroga l'utente, inventaria codice **e documentazione** (SCAN-2b, rilievi `⚠️ NON VERIFICATO`), classifica con firme `strong`/`weak`, verifica la conformità (✅/❌/⚠️). Scrive `01`–`03`, aggiorna `99-state.json` |
+| `check <norma>` | Domanda mirata su una singola norma (es. `check art.50`): chiede solo i fatti da cui dipende e risponde se sei a norma. Non scrive file |
+| `rules` | Genera `.claude/rules/ai-act.md` (globs derivati dall'inventario) + `docs/wiki/concepts/ai-act.md` (se la wiki esiste) |
 | `docs --client` | Brief per il cliente: obblighi per parte, istruzioni per l'uso art. 13, addendum contrattuale |
 | `docs --end-users` | Informativa di trasparenza art. 50 per chi è esposto agli output |
-| `gate [<ref>]` | Ri-triage di un diff: nuovo componente IA o cambio di finalità? Exit ≠ 0 su cambio classe |
-| `status` | Classificazione, staleness, ignoti, scadenze entro 180 giorni. Non scrive nulla |
+| `report` | Report HTML di conformità (`06-report.html`): problemi · non-problemi · correzioni. `--publish artifact` per pubblicarlo |
+| `gate [<ref>]` | Ri-triage di un diff (codice **e** doc): nuovo componente IA o cambio di finalità? Exit ≠ 0 su cambio classe |
+| `status` | Classificazione, conformità, staleness (norme + assessment), ignoti, scadenze entro 180 giorni. Non scrive nulla |
 
 ## Artifact prodotti a runtime
 

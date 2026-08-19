@@ -7,24 +7,48 @@ description: Valuta la conformità all'AI Act (Reg. UE 2024/1689 come modificato
 
 Valuta un sistema di IA rispetto al Regolamento (UE) 2024/1689, come modificato dal Regolamento (UE) 2026/1744 ("Digital Omnibus IA", in vigore dal 27 luglio 2026).
 
+## Modalità d'uso
+
+Questa skill serve tre richieste diverse. Riconosci quale hai davanti prima di partire:
+
+- **Triage completo** — "questo progetto è in regola con l'AI Act?", "che classe di rischio è?". Segui tutte le fasi nell'ordine.
+- **Domanda mirata su una norma** — "sono a posto con l'art. 50?", "mi serve la marcatura CE?", "questo rientra nell'Allegato III?". Vedi *Domande mirate* più sotto: non serve rifare tutto il triage, ma servono comunque i pochi fatti da cui quella norma dipende, e vanno chiesti.
+- **Verdetto di conformità** — non basta classificare: l'utente vuole sapere **se è a norma**. Vedi Fase 5-bis: per ogni obbligo applicabile, stabilisci se è **soddisfatto**, **non soddisfatto** o **incerto**, con l'evidenza.
+
+Il codice si legge; la finalità, il ruolo e il contesto d'uso **no**: li conosce solo chi ha fatto il progetto. Perciò l'interrogazione della Fase 1 non è un formalità — è la fonte primaria. Non dedurre mai questi fatti dal nome del repo o dal codice.
+
 ## Come procedere
 
 Segui le fasi nell'ordine. Non saltare alla conclusione: la classificazione dipende da fatti che vanno raccolti prima.
 
-### Fase 1 — Raccogliere i fatti
+### Fase 1 — Interrogare chi conosce il progetto
 
-Se le informazioni non sono già nel contesto, chiedile. Non inventarle e non dedurle dal nome del progetto.
+**Questa è la fase più importante e va condotta come un vero interrogatorio, non come un modulo da spuntare.** Il codice dice cosa il sistema *fa tecnicamente*; solo l'umano sa *a che cosa serve, per chi, con quali conseguenze*. Da questi fatti — non dal codice — dipendono ruolo e classe di rischio. Chiedi finché non hai una risposta chiara; se una risposta è vaga ("più o meno", "dipende"), **incalza con una sotto-domanda concreta**. Non passare oltre con un fatto a metà: annotalo come ignoto e mostra l'impatto nei due scenari.
 
-1. Che cosa fa il sistema, in una frase.
-2. Con quale nome o marchio arriva sul mercato, e chi lo mette in servizio.
-3. Quali componenti di IA usa (vedi la tassonomia in `references/tipologie-uso.md`).
-4. Quali modelli e fornitori a monte.
-5. Chi lo usa, e chi è esposto ai suoi output (dipendenti, consumatori, pubblico, minori).
-6. Se decide o supporta decisioni riguardanti persone fisiche, e in quale ambito.
-7. Quali dati tratta, incluse le categorie particolari dell'art. 9 GDPR.
-8. In che stato è: idea, demo su dati fittizi, sviluppo, produzione.
+Raggruppa le domande, non farne una alla volta. I blocchi:
 
-Se un elemento resta ignoto, dillo esplicitamente nell'output e indica come cambierebbe la valutazione nei due scenari.
+1. **Finalità reale** — che cosa fa il sistema in una frase, e *a quale scopo di business*. Non "usa un LLM": *per decidere cosa, per chi, con quale effetto pratico*.
+2. **Nome e messa in servizio** — con quale nome/marchio arriva sul mercato, e chi lo mette in servizio. È il fatto che decide il ruolo (provider vs deployer, art. 3/25). Non inventarlo mai.
+3. **Componenti IA e modelli a monte** — quali componenti (tassonomia in `references/tipologie-uso.md`), quali modelli e fornitori a monte, se qualcuno di essi è stato **modificato** (art. 25, soglie GPAI in `references/modifiche-e-ruolo.md`).
+4. **Chi è esposto agli output** — dipendenti, clienti business, consumatori, pubblico generale, **minori**. Chi legge o subisce l'output, non chi preme il bottone.
+5. **Decisioni su persone fisiche** — il sistema decide, supporta una decisione umana, o solo informa? In quale ambito (lavoro/HR, credito, assicurazioni, istruzione, salute, servizi pubblici essenziali, giustizia, migrazione, biometria, nessuno)? È la domanda che apre o chiude l'Allegato III.
+6. **Revisione umana** — c'è un punto di fermo umano prima che l'output produca effetti? Chi, quando, con quale potere di veto reale? (Un "review" che nessuno guarda non conta.)
+7. **Dati trattati** — quali dati personali, incluse le categorie particolari dell'art. 9 GDPR (salute, biometria, etnia, opinioni, orientamento, precedenti penali).
+8. **Stato del ciclo di vita** — idea, demo su dati fittizi, sviluppo, **prova in condizioni reali**, produzione. La distinzione demo/prova-reale non è cosmetica: l'art. 2 §8 copre la prima e **non** la seconda.
+9. **Contesto contrattuale** — è un prodotto per un cliente, interno, o rivenduto? Ci sono accordi che ripartiscono le responsabilità (rilevante per art. 25 §1 lett. a e §4)?
+10. **Modifiche previste** — cosa cambierà nei prossimi mesi? Una finalità in roadmap può spostare la classe (art. 25 §1 lett. c). Chiedilo ora, così i *Punti di attenzione futuri* sono concreti.
+
+Se un elemento resta ignoto dopo aver insistito, dillo esplicitamente nell'output e indica come cambierebbe la valutazione nei due scenari. **Un fatto assunto senza chiederlo è l'errore più grave di questa skill.**
+
+**Componenti a rischio diverso.** Se il sistema ha più componenti IA con finalità diverse (es. un assistente documentale *e* uno scoring di clienti), interroga e classifica **ciascuno per sé**: la classe è del componente-con-finalità, non del progetto. Non appiattire tutto sulla componente più vistosa.
+
+### Domande mirate su una singola norma
+
+Quando la richiesta riguarda una norma sola (art. 50, Allegato III, marcatura CE, art. 5, deroghe art. 6 §3…), non devi rifare l'intero triage — ma **non rispondere al buio**. Ogni norma dipende da pochi fatti: chiedi quelli, poi rispondi con l'articolo dalla `references/` pertinente, e chiudi dicendo **se, su quei fatti, il sistema è a norma o cosa manca**. Esempi di dipendenze minime:
+- *art. 50 §1 (chatbot)* → il sistema interagisce direttamente con persone? è già evidente che è un'IA?
+- *Allegato III* → in quale degli otto ambiti opera? decide o supporta decisioni su persone?
+- *marcatura CE / alto rischio* → è componente di sicurezza di un prodotto dell'Allegato I con valutazione di terza parte, oppure rientra nell'Allegato III?
+- *deroga art. 6 §3* → profila persone fisiche? (se sì, deroga esclusa)
 
 ### Fase 2 — Verificare i divieti (art. 5)
 
@@ -65,20 +89,36 @@ Nota che l'art. 4 (alfabetizzazione in materia di IA) si applica a fornitori e d
 
 Usa `references/scadenzario.md`. Distingui sempre gli obblighi del fornitore da quelli del deployer, e indica per ciascuno la data di applicazione. Le date sono cambiate con il Digital Omnibus: non citare a memoria il calendario originario del 2024.
 
+### Fase 5-bis — Verificare la conformità (non solo classificare)
+
+Classificare dice *quali obblighi si applicano*. Non dice *se il sistema li rispetta*. L'utente quasi sempre vuole la seconda cosa. Per ciascun obbligo applicabile (Fase 5) emetti un verdetto:
+
+- ✅ **Soddisfatto** — c'è evidenza che l'obbligo è rispettato. Cita l'evidenza (`file:line` dal codice, o un fatto confermato dall'umano). Nessuna evidenza = non è soddisfatto, è *incerto*.
+- ❌ **Non soddisfatto** — l'obbligo si applica e manca. È un **problema**: descrivi cosa manca e la correzione concreta.
+- ⚠️ **Incerto** — non hai l'evidenza per dire sì o no. Di' cosa serve verificare e a chi chiederlo. Non spacciare un incerto per un sì.
+
+Un verdetto senza evidenza non vale. Preferisci "incerto, verifica X" a un "soddisfatto" ottimistico: qui un falso positivo espone il cliente.
+
+Distingui tre esiti nell'output, perché servono a decisioni diverse:
+- **Problemi** — obblighi applicabili non soddisfatti. Sono il lavoro da fare.
+- **Non è un problema** — cose che si potrebbero temere ma che *non* si applicano (fuori Allegato III, esclusione art. 2 §8, obbligo art. 50 §2 non pertinente…) o che risultano già soddisfatte. Dirlo esplicitamente evita spese inutili e rassicura su ciò che è a posto.
+- **Correzioni** — per ogni problema, l'azione concreta che lo chiude, con articolo e, dove serve, il punto nel codice.
+
 ### Fase 6 — Produrre l'output
 
 Struttura fissa:
 
-1. **Esito in tre righe** — classificazione, ruolo, se c'è o non c'è un'azione urgente.
+1. **Esito in tre righe** — classificazione, ruolo, se c'è o non c'è un'azione urgente, **e se il sistema risulta a norma o no**.
 2. **Fatti su cui si basa la valutazione**, con l'indicazione esplicita di ciò che è rimasto ignoto.
 3. **Classificazione**, con la motivazione articolata per articolo.
 4. **Ruolo delle parti**, con il richiamo all'art. 25 se rilevante.
 5. **Obblighi applicabili** — tabella: obbligo · articolo · chi · scadenza · azione concreta.
-6. **Azioni per chi sviluppa.**
-7. **Azioni per il cliente**, distinguendo ciò che non può essere assolto al suo posto.
-8. **Clausole contrattuali necessarie.**
-9. **Punti di attenzione futuri** — quali modifiche del sistema farebbero cambiare classe di rischio. È la sezione più utile: la classificazione è una fotografia, non una garanzia.
-10. **Aree adiacenti** — GDPR, Statuto dei lavoratori, Codice del consumo, MDR, dove intersecano. Spesso il rischio concreto è lì.
+6. **Verdetto di conformità** (Fase 5-bis) — per ogni obbligo: ✅ soddisfatto / ❌ non soddisfatto / ⚠️ incerto, con l'evidenza. Poi i tre elenchi: **Problemi**, **Non è un problema**, **Correzioni**.
+7. **Azioni per chi sviluppa.**
+8. **Azioni per il cliente**, distinguendo ciò che non può essere assolto al suo posto.
+9. **Clausole contrattuali necessarie.**
+10. **Punti di attenzione futuri** — quali modifiche del sistema farebbero cambiare classe di rischio. È la sezione più utile: la classificazione è una fotografia, non una garanzia.
+11. **Aree adiacenti** — GDPR, Statuto dei lavoratori, Codice del consumo, MDR, dove intersecano. Spesso il rischio concreto è lì.
 
 ## Principi da tenere fermi
 

@@ -1,7 +1,7 @@
 {
   "name": "ai-act-plugin",
   "description": "Conformità all'AI Act per una codebase (Reg. UE 2024/1689 come modificato dal Reg. UE 2026/1744 — 'Digital Omnibus IA'). Il command /ai-act scansiona il codice e la documentazione di progetto per componenti di IA, classifica rischio e ruolo fornitore/deployer, elenca gli obblighi con le scadenze post-Digital-Omnibus, genera i vincoli che gli agenti seguono e produce i deliverable per cliente ed end-user — ogni affermazione legale fondata sulla skill ai-act-check e sulle sue references/, mai dalla memoria. Cinque modi: scan, rules, docs, gate, status.",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "author": {
     "name": "Giorgio Cerruti",
     "url": "https://github.com/giorgiocerruti"

@@ -1,0 +1,9 @@
+{
+  "description": "Screening CV per assunzioni: LLM + dominio lavoro (Allegato III §4)",
+  "strong_hit_files": ["screener.py"],
+  "weak_domain_terms": ["candidat", "hiring", "recruit", "resume", "score"],
+  "expected_components_min": 1,
+  "expected_risk_class": "alto-rischio",
+  "expected_annex_iii": "punto 4 (lavoro, gestione dei lavoratori e accesso all'attività autonoma)",
+  "notes": "Profilazione/valutazione di persone in ambito lavoro. Deroghe art. 6 §3 escluse se profila."
+}

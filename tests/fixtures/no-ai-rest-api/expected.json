@@ -1,0 +1,8 @@
+{
+  "description": "API REST senza IA. Trappola: parole weak (score, credit) ma nessuna tecnologia strong",
+  "strong_hit_files": [],
+  "weak_domain_terms": ["score", "credit"],
+  "expected_components_min": 0,
+  "expected_risk_class": "fuori-perimetro",
+  "notes": "Regola di promozione: weak senza strong = nessun componente. Il classificatore non deve inventarne."
+}

@@ -59,15 +59,17 @@ Vincoli Agent Skill: `SKILL.md` alla radice, nome cartella = campo `name` (`ai-a
 ## Uso (plugin)
 
 ```bash
-/ai-act scan                 # inventario dei componenti IA da codice + documentazione, classifica, elenca obblighi
+/ai-act scan                 # interroga, inventaria codice + documentazione, classifica, verifica la conformità
+/ai-act check art.50         # domanda mirata su una norma: sei a norma o cosa manca? (non scrive file)
 /ai-act rules                # emette .claude/rules/ai-act.md che gli agenti leggono durante lo sviluppo
 /ai-act docs --client        # brief per il cliente: obblighi per parte, istruzioni art. 13, clausole
 /ai-act docs --end-users     # informativa di trasparenza art. 50 per chi è esposto agli output
-/ai-act gate                 # questo diff aggiunge un componente IA o cambia la classe di rischio?
-/ai-act status               # classificazione, staleness, ignoti, scadenze entro 180 giorni
+/ai-act report               # report HTML: problemi · non-problemi · correzioni
+/ai-act gate                 # questo diff (codice o doc) aggiunge un componente IA o cambia la classe?
+/ai-act status               # classificazione, conformità, staleness, ignoti, scadenze entro 180 giorni
 ```
 
-Flag: `--client` / `--end-users` (solo `docs`) · `--publish clickup|artifact|both` (solo `docs`) · `--force-context` (ri-chiede il questionario di contesto).
+Flag: `--client` / `--end-users` (solo `docs`) · `--publish clickup|artifact|both` (`docs` e `report`) · `--force-context` (ri-chiede il questionario di contesto).
 
 Senza un primo token riconosciuto, l'intero argomento è trattato come domanda libera: carica la skill e risponde, senza scrivere file.
 
@@ -75,19 +77,20 @@ Senza un primo token riconosciuto, l'intero argomento è trattato come domanda l
 
 1. `/ai-act scan` — la prima volta chiede i fatti non deducibili dal codice (ruolo, marchio, chi è esposto, stato del ciclo di vita) e li salva in `00-context.md`. Poi inventaria, classifica, scrive l'assessment.
 2. `/ai-act rules` — genera i vincoli per gli agenti, con `globs` derivati dall'inventario (i vincoli si caricano dove vive il codice IA, non altrove).
-3. `/ai-act docs --client` e `--end-users` — i due deliverable distinti.
-4. `/ai-act gate` prima di una PR, `/ai-act status` per una fotografia.
+3. `/ai-act docs --client` e `--end-users` — i due deliverable distinti · `/ai-act report` — il report HTML di conformità.
+4. `/ai-act gate` prima di una PR, `/ai-act status` per una fotografia. `/ai-act check <norma>` per una domanda puntuale in qualsiasi momento.
 
 ## Come classifica (skill `ai-act-check`)
 
-Sei fasi, in ordine, senza scorciatoie:
+Le fasi, in ordine, senza scorciatoie:
 
-1. **Fatti** — raccolti dall'umano, mai dedotti dal nome del progetto.
+1. **Interrogazione** — un vero interrogatorio di chi conosce il progetto: finalità, mercato, esposti, decisioni su persone, revisione umana, dati, ciclo di vita, contratti, modifiche previste. Il codice si legge; questi fatti si chiedono, mai si deducono.
 2. **Divieti (art. 5)** — per primi, incluso il nuovo art. 5 §1-bis (esito vietato prevedibile e riproducibile senza misure di sicurezza ragionevoli). Se ricorre un divieto, la valutazione si ferma.
 3. **Ruolo (art. 3, art. 25)** — non chi scrive il codice, ma con quale nome il sistema arriva sul mercato. Controllati i tre trasferimenti dell'art. 25 §1, la lett. c) esplicitamente.
-4. **Classe di rischio (art. 6)** — condizioni cumulative del §1, Allegato III, deroghe del §3 con il knock-out sulla profilazione, art. 50.
+4. **Classe di rischio (art. 6)** — condizioni cumulative del §1, Allegato III, deroghe del §3 con il knock-out sulla profilazione, art. 50. Componenti a finalità diverse classificati ciascuno per sé.
 5. **Obblighi + scadenze** — da `references/scadenzario.md`, aggiornato dopo il Digital Omnibus.
-6. **Output** — struttura fissa a 10 sezioni.
+6. **Verdetto di conformità** — per ogni obbligo: ✅ soddisfatto / ❌ no / ⚠️ incerto, con evidenza. Tre elenchi: problemi, non-problemi, correzioni. **Non basta classificare: dice se sei a norma.**
+7. **Output** — struttura fissa.
 
 ## Artifact prodotti
 
@@ -97,11 +100,12 @@ Committati sotto `{{AI_ACT_DIR}}` (default `docs/compliance/ai-act/`):
 |------|-----------|-------|
 | `00-context.md` | Fatti non deducibili dal codice (ruolo, marchio, esposti, stato) | umano — mai riscritto |
 | `01-inventory.md` | Componenti IA trovati, ognuno con `file:line` | auto |
-| `02-assessment.md` | Divieti → ruolo → classe → obblighi | auto |
+| `02-assessment.md` | Divieti → ruolo → classe → obblighi → **conformità** | auto |
 | `03-actions.md` | Azioni dev · azioni cliente · clausole | auto |
 | `04-client-brief.md` | Deliverable per il cliente | auto |
 | `05-end-user-notice.md` | Informativa art. 50 per gli end-user | auto |
-| `99-state.json` | Hash, date, tracking staleness | auto |
+| `06-report.html` | Report HTML: problemi · non-problemi · correzioni | auto |
+| `99-state.json` | Hash, date, conformità, tracking staleness | auto |
 
 Fuori dalla dir: `.claude/rules/ai-act.md` e `docs/wiki/concepts/ai-act.md`.
 
@@ -127,12 +131,16 @@ ai-act-plugin/
   CLAUDE.md                    # guida per chi lavora sul plugin
   README.md                    # questo file
   CHANGELOG.md                 # storico versioni + regole di versionamento
-  commands/ai-act.md           # /ai-act (5 modi) — solo plugin Claude Code
+  commands/ai-act.md           # /ai-act (7 modi) — solo plugin Claude Code
   scripts/build-skill.sh       # impacchetta la skill autonoma → dist/ai-act-check.zip
+  assets/report-template.html  # template del report HTML (modo report)
+  tests/                       # fixture + run-signatures.sh (regressione firme)
   skills/ai-act-check/         # ← sorgente unica, condivisa dai due modi d'uso
-    SKILL.md                   # le 6 fasi
+    SKILL.md                   # le fasi (interrogazione → … → conformità → output)
     references/                # corpo normativo (11 file), unica fonte legale
 ```
+
+Test: `./tests/run-signatures.sh` verifica che le firme rilevino i componenti attesi nelle fixture e che le parole di dominio da sole non ne inventino.
 
 ## Manutenzione e aggiornamenti
 

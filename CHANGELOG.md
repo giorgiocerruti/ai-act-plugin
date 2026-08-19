@@ -19,6 +19,24 @@ il versionamento segue [SemVer](https://semver.org/lang/it/).
 > - **MINOR** — nuovo modo, nuova capacità, o **aggiornamento normativo sostanziale** delle `references/`.
 > - **PATCH** — correzioni di refusi, coerenza, glifi, documentazione; nessun cambio di significato legale.
 
+## [1.2.0] — 2026-08-19
+
+Da valutazione a verifica: il plugin ora non solo classifica, dice **se il sistema è a norma**, interroga a fondo chi conosce il progetto, risponde su singole norme e produce un report HTML.
+
+### Aggiunto
+- **Interrogazione forte dell'utente (skill, Fase 1).** La raccolta fatti diventa un vero interrogatorio: finalità reale, nome/mercato, esposti, decisioni su persone, revisione umana, dati, ciclo di vita, contesto contrattuale, modifiche previste. Solo l'umano conosce il progetto: questi fatti si chiedono, non si deducono. Componenti a finalità diverse classificati ciascuno per sé.
+- **Domande mirate su singole norme** — nuovo modo `check <norma>` (es. `/ai-act check art.50`): chiede solo i fatti da cui quella norma dipende e risponde se sei a norma o cosa manca, senza rifare il triage. Nella skill: sezione "Domande mirate".
+- **Verdetto di conformità (skill, Fase 5-bis)** — per ogni obbligo: ✅ soddisfatto / ❌ non soddisfatto / ⚠️ incerto, con evidenza. Tre elenchi: Problemi, Non è un problema, Correzioni. `02-assessment.md` ha una sezione `Conformità`; `99-state.json` porta `compliance` e `open_problems`.
+- **Report HTML** — nuovo modo `report`: genera `06-report.html` (problemi · non-problemi · correzioni), self-contained, stampabile, verdetti a simbolo+colore, con avviso ignoti e sign-off. Template in `assets/report-template.html`. `--publish artifact` per pubblicarlo.
+- **Test di regressione** — `tests/` con fixture (CV screener alto rischio, chatbot art. 50, API senza IA) + `run-signatures.sh` (grep POSIX, no `rg`): verifica che le firme `strong` rilevino i file attesi e che una fixture con sole parole `weak` non produca componenti.
+
+### Modificato
+- **Firme a due livelli (SCAN-2).** `strong` = import/uso di tecnologia IA (candidato-componente diretto); `weak` = parole di dominio/termini ambigui (qualificano, non creano). Regola di promozione: un componente nasce solo da un hit `strong`. Risolve il falso positivo `llama`→`llama-index` e il rumore delle keyword di dominio su codice non-IA.
+- **`gate` ri-scansiona anche i documenti** modificati (non solo il codice): una finalità ad alto rischio può entrare da una spec.
+- **`status`** mostra conformità, problemi aperti e **staleness normativa** (avvisa se il corpo `references/` è revisionato da oltre 6 mesi).
+- **Riepilogo scan** ordina i problemi per scadenza e gravità; dichiara il confine "vedo solo il repo".
+- Parsing dei manifest di dipendenze robusto a rinomini/refusi (per contenuto, non solo per nome).
+
 ## [1.1.0] — 2026-08-19
 
 ### Aggiunto

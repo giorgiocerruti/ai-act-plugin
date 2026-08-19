@@ -1,0 +1,9 @@
+{
+  "description": "Chatbot assistenza clienti: LLM, interazione con persone, nessun dominio alto rischio",
+  "strong_hit_files": ["bot.py"],
+  "weak_domain_terms": [],
+  "expected_components_min": 1,
+  "expected_risk_class": "rischio-limitato",
+  "expected_obligations": ["art. 50 §1 disclosure interazione IA", "art. 4 alfabetizzazione"],
+  "notes": "Il bot non dichiara di essere IA → problema art. 50 §1 al passaggio in produzione."
+}

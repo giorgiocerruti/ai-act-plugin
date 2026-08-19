@@ -1,7 +1,7 @@
 ---
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash(mkdir:*), Bash(test:*), Bash(ls:*), Bash(git:*), Bash(grep:*), Bash(rg:*), Bash(jq:*), Bash(date:*), Bash(shasum:*), Bash(wc:*), Bash(sed:*), Agent, AskUserQuestion, WebSearch, WebFetch, Artifact, TodoWrite
-argument-hint: <scan|rules|docs|gate|status> [--client | --end-users] [--publish clickup|artifact|both] [--force-context]
-description: Conformità all'AI Act per questo progetto (Reg. UE 2024/1689 come modificato dal Reg. UE 2026/1744). Scansiona il codice e la documentazione di progetto per componenti di IA, classifica rischio e ruolo, elenca gli obblighi con le scadenze, genera le regole che gli agenti devono seguire e produce i documenti destinati al cliente. Carica sempre la skill ai-act-check.
+argument-hint: <scan|check <norma>|rules|docs|report|gate|status> [--client | --end-users] [--publish clickup|artifact|both] [--force-context]
+description: Conformità all'AI Act per questo progetto (Reg. UE 2024/1689 come modificato dal Reg. UE 2026/1744). Scansiona il codice e la documentazione, interroga chi conosce il progetto, classifica rischio e ruolo, verifica se il sistema è a norma (non solo lo scan), risponde a domande su singole norme, genera le regole per gli agenti, i documenti per il cliente e un report HTML di conformità. Carica sempre la skill ai-act-check.
 ---
 
 # /ai-act — triage AI Act, regole e deliverable
@@ -70,7 +70,8 @@ Il documento per `{{AI_ACT_CLIENT_NAME}}` (obblighi, istruzioni per l'uso art. 1
   03-actions.md        azioni per il team dev · azioni per il cliente · clausole contrattuali
   04-client-brief.md   deliverable per {{AI_ACT_CLIENT_NAME}}  (modo docs --client)
   05-end-user-notice.md deliverable per gli end-user del cliente (modo docs --end-users)
-  99-state.json        hash, date di esecuzione, tracking della staleness
+  06-report.html       report HTML di conformità: problemi · non-problemi · correzioni (modo report)
+  99-state.json        hash, date di esecuzione, conformità, tracking della staleness
 ```
 
 Generati fuori dalla directory:
@@ -91,6 +92,8 @@ La directory è **committata**. È proprio il punto: una seconda esecuzione diff
                       "role": "provider|deployer|component-supplier|unknown",
                       "annex_iii_item": null,
                       "art6_3_derogation_claimed": false },
+  "compliance": "conforme|non-conforme|incerto|non-applicabile",
+  "open_problems": 0,
   "unknowns": ["…"],
   "rules_generated_from": { "context_hash": "…", "inventory_hash": "…" },
   "published": { "clickup_doc_id": null, "artifact_url": null }
@@ -105,14 +108,16 @@ Primo token di `$ARGUMENTS`:
 
 | Token | Cosa fa | Richiede |
 |-------|---------|----------|
-| `scan` (o vuoto) | Inventaria il codice **e la documentazione di progetto**, classifica, elenca gli obblighi, scrive `01`–`03`, stampa il riepilogo | — |
+| `scan` (o vuoto) | Inventaria il codice **e la documentazione di progetto**, interroga l'utente, classifica, verifica la conformità, scrive `01`–`03`, stampa il riepilogo | — |
+| `check <norma>` | Domanda mirata su una singola norma (es. `check art.50`, `check allegato-iii`): chiede solo i fatti da cui quella norma dipende e risponde **se sei a norma o cosa manca**. Non rifà l'intero triage, non scrive file | — |
 | `rules` | Genera `.claude/rules/ai-act.md` + la pagina wiki dall'assessment | `02-assessment.md` |
 | `docs --client` | Brief per il cliente: obblighi ripartiti per parte, istruzioni per l'uso (art. 13), addendum contrattuale | `02-assessment.md`, `03-actions.md` |
 | `docs --end-users` | Informativa di trasparenza per gli end-user (art. 50): disclosure del chatbot, marcatura dei contenuti generati | `02-assessment.md` |
-| `gate [<ref>]` | Ri-triage di un diff: questa modifica aggiunge un componente IA o altera la finalità prevista? Exit non-zero su un cambio di classe | `99-state.json` |
-| `status` | Stampa classificazione, staleness, ignoti, scadenze entro 180 giorni. Non cambia nulla | `99-state.json` |
+| `report` | Genera un **report HTML** di conformità (problemi · non-problemi · correzioni) da `02-assessment.md`. `--publish artifact` per pubblicarlo | `02-assessment.md` |
+| `gate [<ref>]` | Ri-triage di un diff (codice **e** doc modificati): aggiunge un componente IA o altera la finalità prevista? Exit non-zero su un cambio di classe | `99-state.json` |
+| `status` | Stampa classificazione, conformità, staleness (norme e assessment), ignoti, scadenze entro 180 giorni. Non cambia nulla | `99-state.json` |
 
-`--publish clickup|artifact|both` si applica solo a `docs`. `--force-context` ri-chiede il questionario di contesto anche se `00-context.md` esiste.
+`--publish clickup|artifact|both` si applica a `docs` e `report`. `--force-context` ri-chiede il questionario di contesto anche se `00-context.md` esiste.
 
 Se il primo token non è nessuno dei precedenti, tratta l'intero `$ARGUMENTS` come una domanda libera: carica la skill e rispondi — senza scrivere nulla.
 
@@ -122,7 +127,7 @@ Se il primo token non è nessuno dei precedenti, tratta l'intero `$ARGUMENTS` co
 
 ```bash
 mkdir -p "{{AI_ACT_DIR}}"
-test -f "{{AI_ACT_DIR}}/99-state.json" || printf '{"schema":1,"last_run":{},"classification":{"risk_class":"indeterminato","role":"unknown"},"unknowns":[]}\n' > "{{AI_ACT_DIR}}/99-state.json"
+test -f "{{AI_ACT_DIR}}/99-state.json" || printf '{"schema":1,"last_run":{},"classification":{"risk_class":"indeterminato","role":"unknown"},"compliance":"incerto","open_problems":0,"unknowns":[]}\n' > "{{AI_ACT_DIR}}/99-state.json"
 ```
 
 Leggi, in quest'ordine: `99-state.json`, `00-context.md` (se presente), `docs/wiki/gotchas.md` (se presente). Poi carica la skill `ai-act-check`.
@@ -187,21 +192,33 @@ sector: "{{INDUSTRY_SECTOR}}"
 
 Scansiona `{{AI_ACT_SCAN_PATHS}}` (ripiega sulla root del repo se non impostato). Usa `Grep`/`rg`; per qualsiasi cosa ambigua, dispaccia l'agente `Explore` per tracciare come il componente è effettivamente usato — una dipendenza in `package.json` che nessuno importa non è un componente IA del sistema.
 
-Set di firme (estendi con `{{AI_ACT_EXTRA_SIGNATURES}}`):
+Le firme hanno **due livelli di confidenza** e non pesano uguale: un import di libreria IA è una prova, una parola di dominio nella prosa è solo un indizio. Estendi con `{{AI_ACT_EXTRA_SIGNATURES}}` (entra in `weak` salvo tu indichi il livello).
+
+**Livello `strong` — import/uso di tecnologia IA. Un hit qui è candidato-componente diretto** (resta il check *è davvero usato*).
 
 | Classe | Firme (case-insensitive) |
 |--------|--------------------------|
-| Modelli generativi / GPAI | `anthropic`, `@anthropic-ai`, `claude-`, `openai`, `gpt-4`, `gpt-5`, `mistral`, `cohere`, `gemini`, `genai`, `ollama`, `llama`, `bedrock`, `azure.*openai` |
-| Orchestrazione LLM | `langchain`, `llamaindex`, `semantic-kernel`, `haystack`, `crewai`, `autogen`, `mcp` |
-| Embedding / RAG | `embedding`, `pgvector`, `pinecone`, `qdrant`, `weaviate`, `chroma`, `faiss`, `vector_store` |
-| ML classico / scoring | `sklearn`, `scikit`, `xgboost`, `lightgbm`, `tensorflow`, `torch`, `onnx`, `predict\(`, `\.score\(`, `risk_score`, `scoring` |
-| Biometria / visione | `face`, `facial`, `fingerprint`, `iris`, `mediapipe`, `opencv`, `deepface`, `insightface`, `emotion` |
-| Voce / audio | `whisper`, `speech_to_text`, `tts`, `voice_clone`, `elevenlabs` |
-| Contenuti sintetici (art. 50) | `image_gen`, `stable-diffusion`, `dall-e`, `midjourney`, `deepfake`, `avatar` |
-| Domini ad alto rischio (Allegato III) | `candidat`, `cv_`, `resume`, `hiring`, `recruit`, `performance_review`, `credit`, `creditworthiness`, `insurance`, `premium`, `student`, `exam`, `grading`, `triage`, `diagnos`, `welfare`, `benefit` |
-| Dati art. 9 GDPR | `health`, `biometric`, `ethnic`, `religio`, `political`, `union_member`, `sexual`, `criminal` |
+| Modelli generativi / GPAI | `anthropic`, `@anthropic-ai`, `claude-`, `openai`, `gpt-4`, `gpt-5`, `mistral`, `cohere`, `gemini`, `genai`, `ollama`, `bedrock`, `azure.*openai` |
+| Orchestrazione LLM | `langchain`, `llama[-_]?index`, `semantic-kernel`, `haystack`, `crewai`, `autogen` |
+| Embedding / RAG | `pgvector`, `pinecone`, `qdrant`, `weaviate`, `chroma`, `faiss`, `fastembed`, `vector_store`, `VectorStoreIndex` |
+| ML classico / scoring | `sklearn`, `scikit`, `xgboost`, `lightgbm`, `tensorflow`, `\btorch\b`, `onnx` |
+| Biometria / visione | `mediapipe`, `opencv`, `deepface`, `insightface` |
+| Voce / audio | `whisper`, `elevenlabs`, `voice_clone` |
+| Contenuti sintetici (art. 50) | `stable-diffusion`, `dall-e`, `midjourney`, `deepfake` |
 
-Per ogni hit che supera il controllo *è davvero usato*, produci una riga di inventario. Poi scrivi `01-inventory.md`:
+**Livello `weak` — parole di dominio o termini generici. Un hit qui NON è mai da solo un componente**: segnala un *contesto* da confermare con codice `strong` vicino o con l'umano. Senza alcun `strong` nel modulo, un `weak` va in "Segnali di dominio" e "Non verificato", **non** in "Componenti".
+
+| Classe | Firme (case-insensitive) | Perché è debole |
+|--------|--------------------------|-----------------|
+| Termini ambigui | `llama`, `\bmcp\b`, `embedding`, `predict\(`, `\.score\(`, `risk_score`, `scoring`, `avatar`, `image_gen`, `\btts\b`, `speech_to_text`, `face`, `facial`, `fingerprint`, `iris`, `emotion` | `llama` colpisce `llama-index` (orchestrazione, non il modello); `score`/`predict`/`face`/`emotion` ricorrono in codice non-IA |
+| Domini ad alto rischio (Allegato III) | `candidat`, `cv_`, `resume`, `hiring`, `recruit`, `performance_review`, `credit`, `creditworthiness`, `insurance`, `premium`, `student`, `exam`, `grading`, `triage`, `diagnos`, `welfare`, `benefit` | indicano *dominio*, non *tecnologia*: contano per la classe **solo se** c'è un componente `strong` che opera su quel dominio |
+| Dati art. 9 GDPR | `health`, `biometric`, `ethnic`, `religio`, `political`, `union_member`, `sexual`, `criminal` | idem: contano se un componente `strong` tratta quei dati |
+
+**Regola di promozione:** un componente d'inventario nasce da almeno un hit `strong` che supera il check *è davvero usato*. Gli hit `weak` qualificano quel componente (dominio, dati, finalità), non lo creano. Un repo pieno di `weak` senza nessun `strong` **non ha componenti IA** — dillo, non inventarli.
+
+**Robustezza del parsing.** I manifest di dipendenze (`requirements*.txt`, `package.json`, `pyproject.toml`, `go.mod`, `Gemfile`) vanno letti anche se rinominati o con refusi (es. `requiremts.txt`): cerca per contenuto, non solo per nome file. Una dipendenza dichiarata ma mai importata resta fuori dall'inventario (check *è davvero usato*).
+
+Per ogni componente promosso, produci una riga di inventario. Poi scrivi `01-inventory.md`:
 
 ```markdown
 ---
@@ -269,10 +286,11 @@ Esegui le Fasi 2 → 5 della skill su `00-context.md` + `01-inventory.md`. **La 
 
 1. **Divieti (art. 5)** — incluso il nuovo meccanismo dell'art. 5 §1-bis: un componente generativo il cui esito vietato è *ragionevolmente prevedibile e riproducibile senza modifiche tecniche significative*, in assenza di misure di sicurezza ragionevoli, è colpito. Un generatore di immagini su prompt non filtrati è esattamente questo caso. Se ricorre un divieto, **fermati**: scrivi `02-assessment.md` con il divieto, salta la tabella degli obblighi e dì chiaramente che il sistema non si può realizzare in quella forma.
 2. **Ruolo** — art. 3 n. 3 / n. 4, più i tre trasferimenti dell'art. 25 §1. Controlla esplicitamente la lett. c) (una modifica della finalità prevista che rende ad alto rischio un sistema che non lo era — anche per finalità generali): è quella che colpisce gli integratori.
-3. **Classe di rischio** — art. 6 §1 (le due condizioni sono **cumulative**), art. 6 §2 + Allegato III, deroghe dell'art. 6 §3 con il **knock-out sulla profilazione**, art. 50, fuori perimetro + esclusioni dell'art. 2.
-4. **Obblighi + scadenze** — da `references/scadenzario.md`, **mai a memoria**: il Digital Omnibus ha spostato le date. Distingui gli obblighi del fornitore da quelli del deployer. Ricorda che l'art. 4 (alfabetizzazione in materia di IA) si applica indipendentemente dalla classe di rischio dal 2 febbraio 2025.
+3. **Classe di rischio** — art. 6 §1 (le due condizioni sono **cumulative**), art. 6 §2 + Allegato III, deroghe dell'art. 6 §3 con il **knock-out sulla profilazione**, art. 50, fuori perimetro + esclusioni dell'art. 2. **Se il sistema ha più componenti con finalità diverse, classifica ciascuno per sé** (skill, Fase 1): la classe complessiva del progetto è la più alta fra i suoi componenti, ma la tabella li tiene distinti.
+4. **Obblighi + scadenze** — da `references/scadenzario.md`, **mai a memoria**: il Digital Omnibus ha spostato le date. Distingui gli obblighi del fornitore da quelli del deployer. Ricorda che l'art. 4 (alfabetizzazione in materia di IA) si applica indipendentemente dalla classe di rischio dal 2 febbraio 2025. Per ogni riga cita l'ancora EUR-Lex (`art. X §Y`) così che il legale possa fare lo spot-check.
+5. **Verdetto di conformità** (skill, Fase 5-bis) — per ogni obbligo applicabile stabilisci ✅ soddisfatto / ❌ non soddisfatto / ⚠️ incerto, **con l'evidenza** (`file:line` dal codice o fatto confermato in `00-context.md`). Nessuna evidenza ⇒ non è "soddisfatto", è "incerto". Da qui derivano i tre elenchi — **Problemi** (obblighi ❌), **Non è un problema** (timori che non si applicano o già ✅), **Correzioni** (l'azione che chiude ogni ❌).
 
-Scrivi `02-assessment.md` (frontmatter + le sezioni 1–5 e 9–10 della Fase 6 della skill) e `03-actions.md` (sezioni 6–8):
+Scrivi `02-assessment.md` (frontmatter + le sezioni 1–6 e 10–11 della Fase 6 della skill, inclusa la **Conformità**) e `03-actions.md` (sezioni 7–9):
 
 ```markdown
 ---
@@ -285,30 +303,69 @@ risk_class: <…>
 role: <…>
 annex_iii_item: <voce o null>
 art6_3_derogation_claimed: true|false
+compliance: conforme|non-conforme|incerto|non-applicabile
+open_problems: <N>
 unknowns: <N>
 ---
+```
+
+La sezione **Conformità** di `02-assessment.md` ha forma fissa:
+
+```markdown
+## Conformità
+
+| Obbligo | Art. | Verdetto | Evidenza | Correzione (se ❌) |
+|---------|------|----------|----------|--------------------|
+| Disclosure interazione IA | art. 50 §1 | ❌ non soddisfatto | `src/agent.py:93` si presenta come persona | aggiungere disclosure IA alla prima interazione |
+
+### Problemi (obblighi non soddisfatti)
+- ❌ <obbligo> — <cosa manca> — art. X
+
+### Non è un problema
+- ✅/➖ <timore comune> — perché non si applica o è già soddisfatto (es. fuori Allegato III; esclusione art. 2 §8; art. 50 §2 non pertinente)
+
+### Correzioni da effettuare
+1. <azione concreta> — art. X — <punto nel codice se pertinente>
 ```
 
 La sezione **Punti di attenzione futuri** è obbligatoria e concreta: quale modifica a quale componente sposterebbe la classe. Scrivila come un elenco di condizioni che un agente può verificare, perché `/ai-act gate` le verificherà.
 
 ### SCAN-4 — Stato + riepilogo
 
-Aggiorna `99-state.json` (hash via `shasum`, classificazione, ignoti). Poi stampa, in `{{AI_ACT_OUTPUT_LANG}}`:
+Aggiorna `99-state.json` (hash via `shasum`, classificazione, `compliance`, `open_problems`, ignoti). Poi stampa, in `{{AI_ACT_OUTPUT_LANG}}`:
 
 ```
 ## Esito
-<classe> · <ruolo> · <azione urgente: sì|no>
+<classe> · <ruolo> · conformità: <conforme|non-conforme|incerto|n/a> · <azione urgente: sì|no>
 
-## Componenti IA: N        Ignoti: M
+## Componenti IA: N   Problemi aperti: P   Ignoti: M
+
+## Problemi (obblighi non soddisfatti) — ordinati per scadenza
+| # | problema | art. | scadenza | correzione |
+
 ## Obblighi con scadenza entro 180 giorni
 | obbligo | art. | chi | scadenza | azione |
 
 ## Prossimi passi
+/ai-act report  → report HTML (problemi · non-problemi · correzioni)
 /ai-act rules   → vincoli per gli agenti
 /ai-act docs --client / --end-users
 ```
 
+Ordina i problemi per scadenza crescente, poi per gravità (divieto > alto rischio > trasparenza). Se `compliance` è `conforme` o `non-applicabile`, stampa una riga esplicita "Nessun problema aperto" invece della tabella vuota. **Confine noto, da dire una volta nel riepilogo:** lo scan vede solo il repository — documentazione esterna (Notion, Confluence, ticket) e fatti non messi in `00-context.md` restano fuori.
+
 Poi accoda una riga per ogni errore di conformità ricorrente rilevato a `docs/wiki/gotchas-inbox.jsonl` (vedi la skill `gotchas`), se quel file esiste.
+
+---
+
+## MODO `check` — domanda mirata su una norma
+
+Per rispondere a una singola norma senza rifare l'intero triage. Il secondo token è il riferimento: `check art.50`, `check art.5`, `check allegato-iii`, `check marcatura-ce`, `check art.6`, `check deroga`, oppure una domanda libera che nomina una norma (`check "mi serve il watermark?"`).
+
+1. Carica la skill `ai-act-check` e apri il file `references/` pertinente alla norma.
+2. Riusa `00-context.md` e `01-inventory.md` se esistono. **Non basta:** ogni norma dipende da pochi fatti (vedi *Domande mirate su una singola norma* nella skill). Se quei fatti non ci sono, **chiedili con `AskUserQuestion`** — solo l'utente li conosce — ma limitati a quelli che servono per quella norma, non all'intero questionario.
+3. Rispondi con: la regola dalla `references/` (con `art. X §Y`), la sua applicazione al sistema sui fatti raccolti, e il **verdetto**: ✅ a norma / ❌ manca <cosa> / ⚠️ incerto, verifica <cosa>. Se ❌, indica la correzione concreta.
+4. **Non scrive file** e non tocca `99-state.json`. È una consultazione. Se l'utente vuole persistere l'esito, indirizzalo a `scan`.
 
 ---
 
@@ -407,19 +464,46 @@ Valutazione al <data>, su un sistema nello stato: <lifecycle>. Elementi non veri
 
 ---
 
+## MODO `report`
+
+Richiede `02-assessment.md`. Genera un **report HTML di conformità** in `{{AI_ACT_DIR}}/06-report.html`, pensato per essere aperto in un browser e mostrato al cliente o al legale. Tre sezioni, nell'ordine, perché servono a decisioni diverse:
+
+1. **Problemi** — gli obblighi ❌ non soddisfatti (dalla sezione *Conformità* dell'assessment), ordinati per scadenza crescente e gravità. Ogni card: obbligo, articolo, cosa manca, evidenza `file:line`, scadenza.
+2. **Non è un problema** — ciò che è ✅ soddisfatto o ➖ non applicabile, con il perché. Serve a rassicurare e a evitare spese inutili: dire "questo NON ti riguarda" ha lo stesso valore di dire cosa correggere.
+3. **Correzioni da effettuare** — elenco numerato e azionabile, una riga per problema, con l'articolo e il punto nel codice.
+
+In testa: esito (classe · ruolo · conformità), data, stato del ciclo di vita, numero di problemi aperti e di ignoti. In coda: il **blocco sign-off** (obbligatorio, come i deliverable esterni), che nomina `{{AI_ACT_LEGAL_REVIEWER}}`.
+
+**Requisiti dell'HTML** (il file deve funzionare da solo, offline):
+- Un solo file, **CSS inline**, nessuna risorsa esterna, nessuno script necessario.
+- Codifica dei verdetti a colore **e** a simbolo (❌ / ✅ / ⚠️ / ➖) — mai colore soltanto (accessibilità).
+- Leggibile in stampa (il legale lo stamperà): niente sfondi scuri pieni, contrasto adeguato.
+- Provenienza visibile: ogni problema mostra la sua evidenza `file:line`; ogni affermazione legale il suo articolo.
+- In testa un avviso `⚠️ NON VERIFICATO` che elenca gli ignoti, così il lettore sa cosa non è stato confermato.
+
+Il template di riferimento è in `assets/report-template.html`: leggilo e riempilo con i dati dell'assessment, non reinventare la struttura.
+
+### Pubblicazione del report
+- Nessun flag → scrive solo `{{AI_ACT_DIR}}/06-report.html` e ne stampa il percorso.
+- `--publish artifact` → pubblica la stessa pagina col tool `Artifact`. **Chiedi prima** (la URL è condivisibile), non impersonare il branding del cliente, tieni visibili sign-off e avviso ignoti.
+- Registra l'eventuale URL in `99-state.json` (`published.artifact_url`).
+
+---
+
 ## MODO `gate`
 
 Il ponte verso la pipeline di sviluppo. Gira su un diff — `git diff <ref>...HEAD --name-only` con `<ref>` che defaulta al merge base con il branch main.
 
 1. Carica `99-state.json`. Nessuno scan precedente → stampa `AI-ACT: no baseline` ed exit 0 (non bloccare mai un progetto che non ha mai eseguito il triage).
-2. Riesegui il set di firme di SCAN-2 **solo sui file modificati**.
+2. Sui **file modificati**: riesegui le firme `strong`/`weak` di SCAN-2 sui file di codice, **e** il rilievo di SCAN-2b sui file di documentazione modificati (`.md`, spec). Una nuova finalità ad alto rischio può entrare da una spec prima che dal codice.
 3. Verdetti:
 
 | Condizione | Verdetto |
 |------------|----------|
 | Nessuna firma IA nel diff | `PASS` |
 | Firma IA in file già in `01-inventory.md`, finalità invariata | `PASS` (annotalo) |
-| Nuovo componente IA non nell'inventario | `STALE` — esegui `/ai-act scan` |
+| Nuovo componente IA `strong` non nell'inventario | `STALE` — esegui `/ai-act scan` |
+| Un doc modificato descrive un nuovo componente/finalità ad alto rischio | `RECLASSIFY` — verifica con l'umano (rilievo da doc, `⚠️ NON VERIFICATO`) |
 | Il diff corrisponde a una condizione dei *Punti di attenzione futuri* | `RECLASSIFY` — fermati, decisione umana richiesta |
 | Una firma colpisce una pratica vietata (art. 5) | `BLOCK` — mai automatico, escala all'utente |
 | `context_hash` ≠ hash di `00-context.md` | `STALE` |
@@ -432,16 +516,19 @@ Il ponte verso la pipeline di sviluppo. Gira su un diff — `git diff <ref>...HE
 
 ## MODO `status`
 
-Legge `99-state.json` e gli artifact, non scrive nulla:
+Legge `99-state.json` e gli artifact, non scrive nulla. Legge anche la data "Ultima revisione normativa" da `references/fonti-e-strumenti.md` per l'avviso di staleness legale:
 
 ```
-Classe: <…>   Ruolo: <…>   Ultimo scan: <data>
+Classe: <…>   Ruolo: <…>   Conformità: <conforme|non-conforme|incerto|n/a>   Ultimo scan: <data>
+Problemi aperti: P        Elementi non verificati: M        Componenti IA: N
 Regole agenti: aggiornate | STALE (context_hash difforme) | mai generate
-Componenti IA: N          Elementi non verificati: M
+Corpo normativo: revisionato al <data di fonti-e-strumenti.md>  [⚠️ STALE se > 6 mesi fa → aggiorna il plugin: /plugin marketplace update ai-act]
 Scadenze nei prossimi 180 giorni:
-  <data> — <obbligo> (art. X) — <chi>
-Deliverable: 04-client-brief.md <data> · 05-end-user-notice.md <mai>
+  <data> — <obbligo> (art. X §Y) — <chi>
+Deliverable: 04-client-brief.md <data> · 05-end-user-notice.md <mai> · 06-report.html <mai>
 ```
+
+Se i problemi aperti sono > 0, elencali sotto, ordinati per scadenza. La soglia di staleness normativa è **6 mesi** dalla data di revisione: oltre, l'affidabilità delle date non è garantita e va aggiornato il plugin.
 
 ---
 
@@ -453,6 +540,9 @@ Deliverable: 04-client-brief.md <data> · 05-end-user-notice.md <mai>
 - **Citare il calendario del 2024.** Il Digital Omnibus ha spostato le date. Leggi sempre `references/scadenzario.md`.
 - **Produrre un'informativa che non serve a nessuno.** Vedi `docs --end-users`.
 - **Classificare su un'affermazione della documentazione.** Un README che promette "scoring dei candidati" non è un componente ad alto rischio finché il codice non lo realizza. Il rilievo da doc è un *punto di attenzione* da confermare con l'umano, mai la base di un obbligo. Vedi SCAN-2b.
+- **Spacciare un incerto per "conforme".** Un obbligo senza evidenza è ⚠️ incerto, non ✅ soddisfatto. Un falso positivo di conformità espone il cliente più di un problema segnalato. Vedi Fase 5-bis.
+- **Creare un componente da un hit `weak`.** Una parola di dominio (`credit`, `face`, `llama`) senza un hit `strong` vicino non è un componente IA. Vedi la regola di promozione in SCAN-2.
+- **Non chiedere ciò che solo l'umano sa.** Finalità, ruolo, esposizione, ciclo di vita non si deducono dal codice. Se non sono in `00-context.md`, si chiedono — non si assumono. Vedi Fase 1.
 - **Lasciare che `rules` sopravviva al suo assessment.** È a questo che serve `context_hash`.
 
 ---
@@ -460,18 +550,22 @@ Deliverable: 04-client-brief.md <data> · 05-end-user-notice.md <mai>
 ## CHECKLIST
 
 - [ ] skill `ai-act-check` caricata prima di ogni classificazione
-- [ ] `00-context.md` presente e confermato dall'umano (non dedotto)
+- [ ] `00-context.md` presente e confermato dall'umano tramite interrogazione (Fase 1), non dedotto
+- [ ] Componenti nati solo da hit `strong`; hit `weak` usati per qualificare, mai per creare
 - [ ] Righe dell'inventario tutte con `file:line`; dipendenze inutilizzate escluse
+- [ ] Componenti a finalità diverse classificati ciascuno per sé
 - [ ] Documentazione di progetto scansionata (SCAN-2b); rilievi da doc marcati `⚠️ NON VERIFICATO — da documentazione` e mai promossi a componenti classificati
 - [ ] Divergenze codice ↔ documentazione ↔ contesto segnalate, non risolte in silenzio
 - [ ] Presenza della revisione umana registrata per ogni componente
 - [ ] Divieti (art. 5) controllati **per primi**, art. 5 §1-bis incluso
 - [ ] Ruolo determinato con i trasferimenti dell'art. 25 controllati, lett. c) esplicitamente
 - [ ] Classe di rischio derivata nell'ordine della skill; knock-out sulla profilazione applicato
-- [ ] Scadenze prese da `references/scadenzario.md`, non a memoria
+- [ ] Scadenze prese da `references/scadenzario.md`, non a memoria, con ancora `art. X §Y`
+- [ ] Verdetto di conformità per ogni obbligo (✅/❌/⚠️) con evidenza; incerti non spacciati per soddisfatti
+- [ ] Tre elenchi prodotti: Problemi · Non è un problema · Correzioni
 - [ ] Ogni azione taggata `[OBBLIGO art. X]` o `[PRUDENZA]`
 - [ ] Ignoti elencati con impatto nei due scenari
-- [ ] `99-state.json` aggiornato con hash freschi
+- [ ] `99-state.json` aggiornato con hash freschi, `compliance` e `open_problems`
 - [ ] Regole generate con `context_hash` e l'avviso di staleness
 - [ ] Wiki `## Business (human-owned 🔒)` intatta
 - [ ] Blocco sign-off su ogni deliverable esterno
